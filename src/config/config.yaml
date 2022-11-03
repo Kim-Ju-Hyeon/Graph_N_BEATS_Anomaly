@@ -1,10 +1,10 @@
 ---
 exp_name: test # 0417
 exp_dir: ../exp
-use_gpu: False
-device: cpu
+use_gpu: True
+device: 0
 seed: None # If you want to reproduce set the seed
-model_name: N_model # N_model IC_PN_BEATS
+model_name: IC_PN_BEATS # N_model IC_PN_BEATS
 train_resume: False
 
 dataset:
@@ -13,15 +13,15 @@ dataset:
 
 train:
     optimizer: Adam
-    epoch: 1
+    epoch: 2
     loss_function : MSE
     lr: 1.0e-3
     wd: 0.0e-4 # Adam
     momentum: 0.9 # SGD
-    batch_size : 256
+    batch_size : 32
 
 graph_learning:
-    graph_learning: False
+    graph_learning: True
     # This Parameters is available when graph_learning is False
     graph_mode: no_graph # no_graph, ground_truth -> Only available For METR-LA, PEMS-BAY dataset
     edge_prob: 0.1 # For random_graph
@@ -37,8 +37,8 @@ graph_learning:
 
 forecasting_module:
     # IC_PN_BEATS
-    stack_num: 1
-    singular_stack_num: 1
+    stack_num: 3
+    singular_stack_num: 3
 
     # N_model
     shapre_weights_in_stack: True
@@ -46,16 +46,17 @@ forecasting_module:
     num_blocks_per_stack: 1
 
     # Common Parameter
-    inter_correlation_block_type: None_GNN # GCN, MPNN, MPGLU, MP_single_message, MPGLU_single_message, None_GNN
+    inter_correlation_block_type: MPGLU # GCN, MPNN, MPGLU, MP_single_message, MPGLU_single_message, None_GNN
     update_only_message: False
     activ: ReLU
     inter_correlation_stack_length: 1
-    forecast_length: 96
+    forecast_length: 6
+    backcast_length: 120
     n_theta_hidden: [512, 512]
-    thetas_dim: [8, 8] # Only Use when N_model Generic
+    thetas_dim: [32, 4] # Only Use when N_model Generic
     message_norm: False
 
-    pooling_mode: max # max average
+    pooling_mode: average # max average
     # Must Match 1) stack_num when use IC-PN-BEATS 2) len(stack_types) when use N-model (n-hits)
     n_pool_kernel_size: [2, 2, 2]
     n_stride_size: [2, 2, 2]
