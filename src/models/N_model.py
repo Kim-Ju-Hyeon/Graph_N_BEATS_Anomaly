@@ -38,7 +38,7 @@ class N_model(nn.Module):
 
         self.inter_correlation_block_type = config.forecasting_module.inter_correlation_block_type
         self.forecast_length = config.forecasting_module.forecast_length
-        self.backcast_length = self.forecast_length * 3
+        self.backcast_length = config.forecasting_module.backcast_length
         self.n_theta_hidden = config.forecasting_module.n_theta_hidden
         self.thetas_dim = config.forecasting_module.thetas_dim
         self.n_layers = config.forecasting_module.inter_correlation_stack_length
