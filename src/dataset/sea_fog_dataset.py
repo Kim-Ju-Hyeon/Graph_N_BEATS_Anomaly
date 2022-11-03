@@ -57,6 +57,8 @@ class Temporal_Graph_Signal(object):
         features, target = [], []
 
         for i, j in indices:
+            print(self.dataframe.iloc[i: i + num_timesteps_in])
+            print(self.dataframe.iloc[i + num_timesteps_in: j])
             features.append((self.dataframe.iloc[i: i + num_timesteps_in]))
             target.append((self.dataframe.iloc[i + num_timesteps_in: j]))
 
