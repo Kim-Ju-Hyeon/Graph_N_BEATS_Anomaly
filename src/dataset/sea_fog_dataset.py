@@ -31,7 +31,7 @@ class Temporal_Graph_Signal(object):
         index_val = df.index
 
         scaled_df = self.scaler.scale(df.to_numpy().T)
-        self.dataframe = pd.DataFrame(scaled_df, columns=list(col_names), index=index_val)
+        self.dataframe = pd.DataFrame(scaled_df.T, columns=list(col_names), index=index_val)
 
         if not os.path.isfile(os.path.join(self.path, f'scaler.pickle')):
             pickle.dump(self.scaler, open(os.path.join(self.path, f'scaler.pickle'), 'wb'))
@@ -58,8 +58,8 @@ class Temporal_Graph_Signal(object):
 
         for i, j in indices:
 
-            features.append((self.dataframe.iloc[i: i + num_timesteps_in]))
-            target.append((self.dataframe.iloc[i + num_timesteps_in: j]))
+            features.append(self.dataframe.iloc[i: i + num_timesteps_in].T)
+            target.append(self.dataframe.iloc[i + num_timesteps_in: j].T)
 
         features = torch.FloatTensor(np.array(features))
         targets = torch.FloatTensor(np.array(target))
