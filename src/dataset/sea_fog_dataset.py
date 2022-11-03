@@ -71,7 +71,7 @@ class Temporal_Graph_Signal(object):
 
     def get_dataset(self, num_timesteps_in: int = 12, num_timesteps_out: int = 12, batch_size: int = 32,
                     return_loader=True):
-        if not os.path.isfile(os.path.join(self.path, f'dataset.pickle')):
+        if not os.path.isfile(os.path.join(self.path, f'indices.pickle')):
             self.dataframe.index = pd.to_datetime(self.dataframe.index)
             self.indices = [
                 (i, i + (num_timesteps_in + num_timesteps_out))
@@ -79,27 +79,23 @@ class Temporal_Graph_Signal(object):
                 if (self.dataframe.index[i + (num_timesteps_in + num_timesteps_out)] - self.dataframe.index[
                     i]).seconds / 600 == num_timesteps_in + num_timesteps_out
             ]
-            print(self.indices)
 
             random.shuffle(self.indices)
-
-            total_length_dataset = len(self.indices)
-            train_idx = int(total_length_dataset * 0.7)
-            valid_idx = int(total_length_dataset * 0.2)
-            train_indices = self.indices[:train_idx]
-            validation_indices = self.indices[train_idx:valid_idx]
-            test_indices = self.indices[valid_idx:]
-
-            train_dataset = self._generate_dataset(train_indices, num_timesteps_in, num_timesteps_out)
-            valid_dataset = self._generate_dataset(validation_indices, num_timesteps_in, num_timesteps_out)
-            test_dataset = self._generate_dataset(test_indices, num_timesteps_in, num_timesteps_out)
-
-            dataset = {'train': train_dataset, 'valid': valid_dataset, 'test': test_dataset}
-            pickle.dump(dataset, open(os.path.join(self.path, f'dataset.pickle'), 'wb'))
+            pickle.dump(self.indices, open(os.path.join(self.path, f'indices.pickle'), 'wb'))
 
         else:
-            _dataset = pickle.load(open(os.path.join(self.path, f'dataset.pickle'), 'rb'))
-            train_dataset, valid_dataset, test_dataset = _dataset['train'], _dataset['valid'], _dataset['test']
+            self.indices = pickle.load(open(os.path.join(self.path, f'indices.pickle'), 'rb'))
+
+        total_length_dataset = len(self.indices)
+        train_idx = int(total_length_dataset * 0.7)
+        valid_idx = int(total_length_dataset * 0.2)
+        train_indices = self.indices[:train_idx]
+        validation_indices = self.indices[train_idx:valid_idx]
+        test_indices = self.indices[valid_idx:]
+
+        train_dataset = self._generate_dataset(train_indices, num_timesteps_in, num_timesteps_out)
+        valid_dataset = self._generate_dataset(validation_indices, num_timesteps_in, num_timesteps_out)
+        test_dataset = self._generate_dataset(test_indices, num_timesteps_in, num_timesteps_out)
 
         if return_loader:
             train = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True,
