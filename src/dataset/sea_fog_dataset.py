@@ -90,8 +90,8 @@ class Temporal_Graph_Signal(object):
         train_idx = int(total_length_dataset * 0.7)
         valid_idx = int(total_length_dataset * 0.2)
         train_indices = self.indices[:train_idx]
-        validation_indices = self.indices[train_idx:valid_idx]
-        test_indices = self.indices[valid_idx:]
+        validation_indices = self.indices[train_idx:train_idx+valid_idx]
+        test_indices = self.indices[train_idx+valid_idx:]
 
         train_dataset = self._generate_dataset(train_indices, num_timesteps_in, num_timesteps_out)
         valid_dataset = self._generate_dataset(validation_indices, num_timesteps_in, num_timesteps_out)
