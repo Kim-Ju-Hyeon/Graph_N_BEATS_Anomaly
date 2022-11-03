@@ -18,29 +18,20 @@ import pickle
 from utils.dataset_utils import time_features_from_frequency_str
 
 
-class Sea_Fog_Graph_Signal(object):
-    def __init__(self, dataset_name, scaler_type='std', univariate=False):
-        super(Sea_Fog_Graph_Signal, self).__init__()
-        self.dataset_name = dataset_name
-        self.univariate = univariate
+class Temporal_Graph_Signal(object):
+    def __init__(self, scaler_type='std'):
+        super(Temporal_Graph_Signal, self).__init__()
         self.num_workers = 4 * torch.cuda.device_count()
         self._set_dataset_parameters()
         self.scaler = Scaler(scaler_type)
 
     def preprocess_dataset(self):
-        y_df = pd.read_csv(self.data_dir, index_col=0).to_numpy().T
-        y_df = self.scaler.scale(y_df)
+        df = pd.read_csv(os.path.join(self.path, 'sea_fog_dataset.csv'), index_col=0)
+        col_names = df.columns
+        index_val = df.index
 
-        total_sequence_length = y_df.shape[1]
-        train_index = int(total_sequence_length * 0.7)
-        valid_index = int(total_sequence_length * 0.1) + train_index
-
-        self.train_X = y_df[:, :train_index]
-        self.valid_X = y_df[:, train_index:valid_index]
-        self.test_X = y_df[:, valid_index:]
-
-        if not os.path.isfile(os.path.join(self.path, f'inference.pickle')):
-            pickle.dump(self.test_X, open(os.path.join(self.path, f'inference.pickle'), 'wb'))
+        scaled_df = self.scaler.scale(df.to_numpy().T)
+        self.dataframe = pd.DataFrame(scaled_df.T, columns=list(col_names), index=index_val)
 
         if not os.path.isfile(os.path.join(self.path, f'scaler.pickle')):
             pickle.dump(self.scaler, open(os.path.join(self.path, f'scaler.pickle'), 'wb'))
@@ -56,34 +47,21 @@ class Sea_Fog_Graph_Signal(object):
         return time_stamp
 
     def _set_dataset_parameters(self):
-        self.path = './data/Sea_Fog'
-        if self.univariate:
-            self.nodes_num = 6
-            self.data_dir = os.path.join(self.path, 'port_visible_feature.csv')
-        else:
-            self.nodes_num = 90
-            self.data_dir = os.path.join(self.path, 'port_total_feature.csv')
-
+        self.nodes_num = 55
+        self.path = './data/SeaFog/graph_signal'
         self.node_features = 1
         self.freq = '10min'
         self.url = None
 
-    def _generate_dataset(self, dataset, num_timesteps_in: int = 12, num_timesteps_out: int = 12):
-        indices = [
-            (i, i + (num_timesteps_in + num_timesteps_out))
-            for i in range(dataset.shape[1] - (num_timesteps_in + num_timesteps_out) + 1)
-            if i % 3 == 0
-        ]
-
+    def _generate_dataset(self, indices, num_timesteps_in: int = 12, num_timesteps_out: int = 12):
         features, target = [], []
 
         for i, j in indices:
-            features.append((dataset[:, i: i + num_timesteps_in]))
-            target.append((dataset[:, i + num_timesteps_in: j]))
+            features.append((self.dataframe.iloc[i: i + num_timesteps_in]))
+            target.append((self.dataframe.iloc[i + num_timesteps_in: j]))
 
         features = torch.FloatTensor(np.array(features))
         targets = torch.FloatTensor(np.array(target))
-
 
         _data = []
         for batch in range(len(indices)):
@@ -93,18 +71,42 @@ class Sea_Fog_Graph_Signal(object):
 
     def get_dataset(self, num_timesteps_in: int = 12, num_timesteps_out: int = 12, batch_size: int = 32,
                     return_loader=True):
+        if not os.path.isfile(os.path.join(self.path, f'dataset.pickle')):
+            self.dataframe.index = pd.to_datetime(self.dataframe.index)
+            self.indices = [
+                (i, i + (num_timesteps_in + num_timesteps_out))
+                for i in range(self.dataframe.shape[0] - (num_timesteps_in + num_timesteps_out))
+                if (self.dataframe.index[i + (num_timesteps_in + num_timesteps_out)] - self.dataframe.index[
+                    i]).seconds / 600 == num_timesteps_in + num_timesteps_out
+            ]
+            print(self.indices)
 
-        train_dataset = self._generate_dataset(self.train_X, num_timesteps_in, num_timesteps_out)
-        valid_dataset = self._generate_dataset(self.valid_X, num_timesteps_in, num_timesteps_out)
-        test_dataset = self._generate_dataset(self.test_X, num_timesteps_in, num_timesteps_out)
+            random.shuffle(self.indices)
+
+            total_length_dataset = len(self.indices)
+            train_idx = int(total_length_dataset * 0.7)
+            valid_idx = int(total_length_dataset * 0.2)
+            train_indices = self.indices[:train_idx]
+            validation_indices = self.indices[train_idx:valid_idx]
+            test_indices = self.indices[valid_idx:]
+
+            train_dataset = self._generate_dataset(train_indices, num_timesteps_in, num_timesteps_out)
+            valid_dataset = self._generate_dataset(validation_indices, num_timesteps_in, num_timesteps_out)
+            test_dataset = self._generate_dataset(test_indices, num_timesteps_in, num_timesteps_out)
+
+            dataset = {'train': train_dataset, 'valid': valid_dataset, 'test': test_dataset}
+            pickle.dump(dataset, open(os.path.join(self.path, f'dataset.pickle'), 'wb'))
+
+        else:
+            _dataset = pickle.load(open(os.path.join(self.path, f'dataset.pickle'), 'rb'))
+            train_dataset, valid_dataset, test_dataset = _dataset['train'], _dataset['valid'], _dataset['test']
 
         if return_loader:
             train = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True,
                                num_workers=self.num_workers, pin_memory=True)
             valid = DataLoader(valid_dataset, batch_size=batch_size, shuffle=True, drop_last=True,
                                num_workers=self.num_workers, pin_memory=True)
-            test = DataLoader(test_dataset, batch_size=1, shuffle=False,
-                              num_workers=self.num_workers, pin_memory=True)
+            test = DataLoader(test_dataset, batch_size=1, shuffle=True, num_workers=self.num_workers, pin_memory=True)
 
             return train, valid, test
 

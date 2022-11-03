@@ -13,7 +13,7 @@ from models.N_model import N_model
 from utils.train_helper import model_snapshot, load_model
 from utils.logger import get_logger
 
-from dataset.temporal_graph_dataset import Temporal_Graph_Signal
+from dataset.sea_fog_dataset import Temporal_Graph_Signal
 
 from utils.score import get_score
 import yaml
@@ -22,7 +22,6 @@ from utils.train_helper import edict2dict
 
 class Runner(object):
     def __init__(self, config):
-        config.forecasting_module.backcast_length = config.forecasting_module.forecast_length * 3
         self.get_dataset(config)
         self.config = config
         self.exp_dir = config.exp_dir
@@ -38,6 +37,7 @@ class Runner(object):
         self.train_conf = config.train
         self.dataset_conf = config.dataset
         self.nodes_num = config.dataset.nodes_num
+        self.target_col_num = [10, 21, 32, 43, 54]
 
         if self.train_conf.loss_function == 'MAE':
             self.loss = nn.L1Loss()
@@ -59,7 +59,7 @@ class Runner(object):
             self.model = self.model.to(device=self.device)
 
     def get_dataset(self, config):
-        loader = Temporal_Graph_Signal(config.dataset.name, config.dataset.scaler_type)
+        loader = Temporal_Graph_Signal(config.dataset.scaler_type)
 
         config.dataset.nodes_num = loader.nodes_num
         config.dataset.node_features = loader.node_features
@@ -115,7 +115,14 @@ class Runner(object):
                     data_batch = data_batch.to(device=self.device)
 
                 backcast, forecast, _ = self.model(data_batch.x, interpretability=False)
-                loss = self.loss(forecast, data_batch.y)
+                forecast = forecast.view(self.train_conf.batch_size, self.dataset_conf.nodes_num, -1)
+                groud_truth = data_batch.y.view(self.train_conf.batch_size, self.dataset_conf.nodes_num, -1)
+
+                loss = self.loss(forecast[:, 10, :], groud_truth[:, 10, :]) + \
+                       self.loss(forecast[:, 21, :], groud_truth[:, 21, :]) + \
+                       self.loss(forecast[:, 32, :], groud_truth[:, 32, :]) + \
+                       self.loss(forecast[:, 43, :], groud_truth[:, 43, :]) + \
+                       self.loss(forecast[:, 54, :], groud_truth[:, 54, :])
 
                 # backward pass (accumulates gradients).
                 loss.backward()
@@ -146,7 +153,14 @@ class Runner(object):
                 with torch.no_grad():
                     _, forecast, _ = self.model(data_batch.x, interpretability=False)
 
-                loss = self.loss(forecast, data_batch.y)
+                forecast = forecast.view(self.train_conf.batch_size, self.dataset_conf.nodes_num, -1)
+                groud_truth = data_batch.y.view(self.train_conf.batch_size, self.dataset_conf.nodes_num, -1)
+
+                loss = self.loss(forecast[:, 10, :], groud_truth[:, 10, :]) + \
+                       self.loss(forecast[:, 21, :], groud_truth[:, 21, :]) + \
+                       self.loss(forecast[:, 32, :], groud_truth[:, 32, :]) + \
+                       self.loss(forecast[:, 43, :], groud_truth[:, 43, :]) + \
+                       self.loss(forecast[:, 54, :], groud_truth[:, 54, :])
 
                 val_loss += [float(loss.data.cpu().numpy())]
 
@@ -210,9 +224,17 @@ class Runner(object):
             with torch.no_grad():
                 _backcast_output, _forecast_output, outputs = self.best_model(data_batch.x, interpretability=True)
 
-            loss = self.loss(_forecast_output, data_batch.y)
+            forecast = _forecast_output.view(self.train_conf.batch_size, self.dataset_conf.nodes_num, -1)
+            groud_truth = data_batch.y.view(self.train_conf.batch_size, self.dataset_conf.nodes_num, -1)
+
+            loss = self.loss(forecast[:, 10, :], groud_truth[:, 10, :]) + \
+                   self.loss(forecast[:, 21, :], groud_truth[:, 21, :]) + \
+                   self.loss(forecast[:, 32, :], groud_truth[:, 32, :]) + \
+                   self.loss(forecast[:, 43, :], groud_truth[:, 43, :]) + \
+                   self.loss(forecast[:, 54, :], groud_truth[:, 54, :])
 
             test_loss += [float(loss.data.cpu().detach().numpy())]
+
             forecast_list += [_forecast_output.cpu().detach().numpy()]
             backcast_list += [_backcast_output.cpu().detach().numpy()]
 
