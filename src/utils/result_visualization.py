@@ -80,7 +80,7 @@ def get_scaler_and_test_dataset(config):
     num_timesteps_in = config.forecasting_module.backcast_length
     num_timesteps_out = config.forecasting_module.forecast_length
 
-    _dir = f'../GSL/data/{dataset}'
+    _dir = f'../src/data/{dataset}'
 
     ett_dataset_list = ['ETTm1', 'ETTm2', 'ETTh1', 'ETTh2']
     if dataset in ett_dataset_list:
