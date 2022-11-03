@@ -64,9 +64,6 @@ class Temporal_Graph_Signal(object):
         features = torch.FloatTensor(np.array(features))
         targets = torch.FloatTensor(np.array(target))
 
-        print(features.shape)
-        print(targets.shape)
-
         _data = []
         for batch in range(len(indices)):
             _data.append(Data(x=features[batch], y=targets[batch], time_stamp=None))
