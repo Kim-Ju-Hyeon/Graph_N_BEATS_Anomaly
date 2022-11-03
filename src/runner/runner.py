@@ -114,6 +114,7 @@ class Runner(object):
                 if self.use_gpu and (self.device != 'cpu'):
                     data_batch = data_batch.to(device=self.device)
 
+                print(data_batch.x.shape)
                 backcast, forecast, _ = self.model(data_batch.x, interpretability=False)
                 forecast = forecast.view(self.train_conf.batch_size, self.dataset_conf.nodes_num, -1)
                 groud_truth = data_batch.y.view(self.train_conf.batch_size, self.dataset_conf.nodes_num, -1)
