@@ -1,0 +1,63 @@
+---
+exp_name: 1103_N_BEATS_I # 0417
+exp_dir: ../exp
+use_gpu: True
+device: 0
+seed: None # If you want to reproduce set the seed
+model_name: N_model # N_model IC_PN_BEATS
+train_resume: False
+
+dataset:
+    name: sea_fog # sea_fog
+    scaler_type: std # std, invariant, norm, norm1, median
+
+train:
+    optimizer: Adam
+    epoch: 50
+    loss_function : MSE
+    lr: 1.0e-3
+    wd: 0.0e-4 # Adam
+    momentum: 0.9 # SGD
+    batch_size : 32
+
+graph_learning:
+    graph_learning: True
+    # This Parameters is available when graph_learning is False
+    graph_mode: no_graph # no_graph, ground_truth -> Only available For METR-LA, PEMS-BAY dataset
+    edge_prob: 0.1 # For random_graph
+
+    factor: 3 # Use it when Graph learning mode is ProbSparse Attention -> # of sampling Key and Query
+    n_head: 4 # Use it Attention Graph Learning
+    dropout_rate: 0.5
+
+    kernel_size: [16, 16]
+    stride: [2, 2]
+    conv_dim: [8, 16]
+    hidden_dim: 128
+
+forecasting_module:
+    # IC_PN_BEATS
+    stack_num: 3
+    singular_stack_num: 3
+
+    # N_model
+    shapre_weights_in_stack: True
+    stack_types: ['trend', 'seasonality', 'seasonality'] # trend, seasonality, generic, n_hits
+    num_blocks_per_stack: 1
+
+    # Common Parameter
+    inter_correlation_block_type: MPGLU # GCN, MPNN, MPGLU, MP_single_message, MPGLU_single_message, None_GNN
+    update_only_message: False
+    activ: ReLU
+    inter_correlation_stack_length: 1
+    forecast_length: 6
+    backcast_length: 120
+    n_theta_hidden: [128, 128]
+    thetas_dim: [32, 4] # Only Use when N_model Generic
+    message_norm: False
+
+    pooling_mode: average # max average
+    # Must Match 1) stack_num when use IC-PN-BEATS 2) len(stack_types) when use N-model (n-hits)
+    n_pool_kernel_size: [2, 2, 2]
+    n_stride_size: [2, 2, 2]
+    n_freq_downsample: [168, 24, 1]
