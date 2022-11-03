@@ -2,7 +2,7 @@
 exp_name: test # 0417
 exp_dir: ../exp
 use_gpu: True
-device: 0
+device: 1
 seed: None # If you want to reproduce set the seed
 model_name: IC_PN_BEATS # N_model IC_PN_BEATS
 train_resume: False
