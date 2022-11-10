@@ -27,11 +27,16 @@ class Temporal_Graph_Signal(object):
 
     def preprocess_dataset(self):
         df = pd.read_csv(os.path.join(self.path, 'sea_fog_dataset.csv'), index_col=0)
-        col_names = df.columns
+        _col_names = df.columns
+        fog_col = [_col for _col in _col_names if 'Fog' in _col]
+        columns = [_col for _col in _col_names if _col not in fog_col]
         index_val = df.index
 
         scaled_df = self.scaler.scale(df.to_numpy().T)
-        self.dataframe = pd.DataFrame(scaled_df.T, columns=list(col_names), index=index_val)
+        dataframe = pd.DataFrame(scaled_df.T, columns=list(_col_names), index=index_val)
+
+        self.dataframe = dataframe[columns]
+        self.fog_df = dataframe[fog_col]
 
         if not os.path.isfile(os.path.join(self.path, f'scaler.pickle')):
             pickle.dump(self.scaler, open(os.path.join(self.path, f'scaler.pickle'), 'wb'))
@@ -53,20 +58,22 @@ class Temporal_Graph_Signal(object):
         self.freq = '10min'
         self.url = None
 
-    def _generate_dataset(self, indices, num_timesteps_in: int = 12, num_timesteps_out: int = 12):
-        features, target = [], []
+    def _generate_dataset(self, indices, num_timesteps_in: int = 12):
+        features, target, anomaly = [], [], []
 
         for i, j in indices:
+            features.append(self.dataframe.iloc[i: i + num_timesteps_in].T.values)
+            target.append(self.dataframe.iloc[i + num_timesteps_in: j].T.values)
+            temp = self.fog_df.iloc[i + num_timesteps_in:j].T.values
+            anomaly.append(np.array([1 if sum(_row) >= 1 else 0 for _row in temp]).T)
 
-            features.append(self.dataframe.iloc[i: i + num_timesteps_in].T)
-            target.append(self.dataframe.iloc[i + num_timesteps_in: j].T)
-
-        features = torch.FloatTensor(np.array(features))
-        targets = torch.FloatTensor(np.array(target))
+        features = torch.FloatTensor(features)
+        targets = torch.FloatTensor(target)
+        anomaly_point = torch.Tensor(anomaly)
 
         _data = []
         for batch in range(len(indices)):
-            _data.append(Data(x=features[batch], y=targets[batch], time_stamp=None))
+            _data.append(Data(x=features[batch], y=targets[batch], anomaly=anomaly_point[batch], time_stamp=None))
 
         return _data
 
@@ -94,9 +101,9 @@ class Temporal_Graph_Signal(object):
         validation_indices = self.indices[train_idx:train_idx+valid_idx]
         test_indices = self.indices[train_idx+valid_idx:]
 
-        train_dataset = self._generate_dataset(train_indices, num_timesteps_in, num_timesteps_out)
-        valid_dataset = self._generate_dataset(validation_indices, num_timesteps_in, num_timesteps_out)
-        test_dataset = self._generate_dataset(test_indices, num_timesteps_in, num_timesteps_out)
+        train_dataset = self._generate_dataset(train_indices, num_timesteps_in)
+        valid_dataset = self._generate_dataset(validation_indices, num_timesteps_in)
+        test_dataset = self._generate_dataset(test_indices, num_timesteps_in)
 
         if return_loader:
             train = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True,
