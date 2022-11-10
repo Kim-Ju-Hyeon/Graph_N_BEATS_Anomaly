@@ -15,6 +15,7 @@ train:
     optimizer: Adam
     epoch: 2
     loss_function : MSE
+    loss_type: # classification, regression_all, regression_vis, combine_loss
     lr: 1.0e-3
     wd: 0.0e-4 # Adam
     momentum: 0.9 # SGD
