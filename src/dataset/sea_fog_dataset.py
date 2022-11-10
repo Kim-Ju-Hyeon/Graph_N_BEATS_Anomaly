@@ -54,10 +54,9 @@ class Temporal_Graph_Signal(object):
         self.url = None
 
     def _generate_dataset(self, indices, num_timesteps_in: int = 12, num_timesteps_out: int = 12):
-        features, target = [], []
+        features, target, anomaly = [], [], []
 
         for i, j in indices:
-
             features.append(self.dataframe.iloc[i: i + num_timesteps_in].T)
             target.append(self.dataframe.iloc[i + num_timesteps_in: j].T)
 
