@@ -31,9 +31,12 @@ def main(conf_file_path):
                     sub_dir = now.strftime('%m%d_%H%M%S')
                     config.seed = set_seed(config.seed)
 
-                    config.exp_name = config.exp_name
+                    if combine_loss:
+                        config.exp_name = str(config.exp_name) + '_' + loss_type + '_combine_loss'
+                    else:
+                        config.exp_name = str(config.exp_name) + '_' + loss_type + '_single_loss'
 
-                    config.exp_dir = os.path.join(config.exp_dir, str(config.exp_name)+'_'+loss_type)
+                    config.exp_dir = os.path.join(config.exp_dir, config.exp_name)
                     config.exp_sub_dir = os.path.join(config.exp_dir, sub_dir)
                     config.model_save = os.path.join(config.exp_sub_dir, "model_save")
 
@@ -46,15 +49,14 @@ def main(conf_file_path):
                     logger = setup_logging('INFO', log_file, logger_name=str(config.seed))
                     logger.info("Writing log file to {}".format(log_file))
                     logger.info("Exp instance id = {}".format(config.exp_name))
-                    time.sleep(1)
 
-                    # try:
-                    #     runner = Runner(config=config)
-                    #     runner.train()
-                    #     runner.test()
-                    #
-                    # except:
-                    #     logger.error(traceback.format_exc())
+                    try:
+                        runner = Runner(config=config)
+                        runner.train()
+                        runner.test()
+
+                    except:
+                        logger.error(traceback.format_exc())
 
 
 if __name__ == '__main__':
