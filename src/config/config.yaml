@@ -20,7 +20,7 @@ train:
     lr: 1.0e-3
     wd: 0.0e-4 # Adam
     momentum: 0.9 # SGD
-    batch_size : 128
+    batch_size : 2
 
 graph_learning:
     graph_learning: True

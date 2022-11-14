@@ -128,13 +128,14 @@ class Runner(object):
                 forecast = model_output[0].view(self.train_conf.batch_size, self.dataset_conf.nodes_num, -1)
                 groud_truth = data_batch.y.view(self.train_conf.batch_size, self.dataset_conf.nodes_num, -1)
 
-                classi_loss = Variable(torch.Tensor([0]), requires_grad=True).to(device=self.device)
+                classi_loss = torch.Tensor([0]).to(device=self.device)
                 if self.train_conf.loss_type == 'classification' or self.combine_loss:
                     anomaly = model_output[1]
+                    anomaly_target = data_batch.anomaly.view(self.train_conf.batch_size, len(self.target_col_num), 2)
                     for ii in range(len(self.normedWeight)):
-                        classi_loss += self.classification_loss[ii](anomaly[:, ii, :], data_batch.anomaly[:, ii])*(1/len(self.target_col_num))
+                        classi_loss += self.classification_loss[ii](anomaly[:, ii, :], anomaly_target[:, ii, :])*(1/len(self.target_col_num))
 
-                regress_loss = Variable(torch.Tensor([0]), requires_grad=True).to(device=self.device)
+                regress_loss = torch.Tensor([0]).to(device=self.device)
                 if self.train_conf.loss_type == 'regression_all':
                     regress_loss += self.regression_loss(forecast, groud_truth)
                 elif self.train_conf.loss_type == 'regression_vis':
@@ -182,15 +183,16 @@ class Runner(object):
                 forecast = model_output[0].view(self.train_conf.batch_size, self.dataset_conf.nodes_num, -1)
                 groud_truth = data_batch.y.view(self.train_conf.batch_size, self.dataset_conf.nodes_num, -1)
 
-                classi_loss = Variable(torch.Tensor([0]), requires_grad=True).to(device=self.device)
+                classi_loss = torch.Tensor([0]).to(device=self.device)
                 if self.train_conf.loss_type == 'classification' or self.combine_loss:
                     anomaly = model_output[1]
+                    anomaly_target = data_batch.anomaly.view(self.train_conf.batch_size, len(self.target_col_num))
                     for ii in range(len(self.normedWeight)):
                         classi_loss += self.classification_loss[ii](anomaly[:, ii, :],
-                                                                    data_batch.anomaly[:, ii]) * (
+                                                                    anomaly_target[:, ii]) * (
                                                    1 / len(self.target_col_num))
 
-                regress_loss = Variable(torch.Tensor([0]), requires_grad=True).to(device=self.device)
+                regress_loss = torch.Tensor([0]).to(device=self.device)
                 if self.train_conf.loss_type == 'regression_all':
                     regress_loss += self.regression_loss(forecast, groud_truth)
 
@@ -273,14 +275,15 @@ class Runner(object):
             forecast = model_output[0].view(self.config.train.batch_size, self.dataset_conf.nodes_num, -1)
             groud_truth = data_batch.y.view(self.config.train.batch_size, self.dataset_conf.nodes_num, -1)
 
-            classi_loss = Variable(torch.Tensor([0]), requires_grad=True).to(device=self.device)
+            classi_loss = torch.Tensor([0]).to(device=self.device)
             if self.train_conf.loss_type == 'classification' or self.combine_loss:
                 anomaly = model_output[1]
+                anomaly_target = data_batch.anomaly.view(self.train_conf.batch_size, len(self.target_col_num))
                 for ii in range(len(self.normedWeight)):
-                    classi_loss += self.classification_loss[ii](anomaly[:, ii, :], data_batch.anomaly[:, ii]) * (
+                    classi_loss += self.classification_loss[ii](anomaly[:, ii, :], anomaly_target[:, ii]) * (
                                 1 / len(self.target_col_num))
 
-            regress_loss = Variable(torch.Tensor([0]), requires_grad=True).to(device=self.device)
+            regress_loss = torch.Tensor([0]).to(device=self.device)
             if self.train_conf.loss_type == 'regression_all':
                 regress_loss += self.regression_loss(forecast, groud_truth)
             elif self.train_conf.loss_type == 'regression_vis':

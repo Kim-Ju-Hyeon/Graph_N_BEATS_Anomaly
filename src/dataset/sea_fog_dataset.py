@@ -6,6 +6,8 @@ from glob import glob
 from torch_geometric.data import Data
 from torch_geometric.loader import DataLoader
 
+import torch.nn.functional as F
+
 from utils.scalers import Scaler
 import os
 import pandas as pd
@@ -65,21 +67,20 @@ class Temporal_Graph_Signal(object):
         for i, j in indices:
             features.append(self.dataframe.iloc[i: i + num_timesteps_in].T.values)
             target.append(self.dataframe.iloc[i + num_timesteps_in: j].T.values)
-            anomaly.append(self.fog_df.iloc[i + num_timesteps_in:j].T.values[:, 0])
+
+            temp = self.fog_df.iloc[i + num_timesteps_in:j].T.values[:, 0]
+            anomaly.append(F.one_hot(torch.from_numpy(temp), 2).type(torch.FloatTensor))
 
         features = torch.FloatTensor(np.array(features))
         targets = torch.FloatTensor(np.array(target))
-        anomaly_point = torch.Tensor(np.array(anomaly))
+        anomaly_point = torch.stack(anomaly, axis=0)
 
         _data = []
         for batch in range(len(indices)):
             _data.append(Data(x=features[batch], y=targets[batch], anomaly=anomaly_point[batch], time_stamp=None))
 
         if weight:
-            total_samples = anomaly_point.shape[0]
-            nSamples = [[total_samples - int(num_samples), int(num_samples)] for num_samples in sum(anomaly_point)]
-
-            normedWeights = [[1 - (x[0] / sum(x)), 1 - (x[1] / sum(x))] for x in nSamples]
+            normedWeights = [[1 - (x[0].item() / sum(x).item()), 1-(x[1].item() / sum(x).item())] for x in sum(anomaly)]
 
             return _data, normedWeights
 
