@@ -58,14 +58,13 @@ class Temporal_Graph_Signal(object):
         self.freq = '10min'
         self.url = None
 
-    def _generate_dataset(self, indices, num_timesteps_in: int = 12):
+    def _generate_dataset(self, indices, num_timesteps_in: int = 12, weight=False):
         features, target, anomaly = [], [], []
 
         for i, j in indices:
             features.append(self.dataframe.iloc[i: i + num_timesteps_in].T.values)
             target.append(self.dataframe.iloc[i + num_timesteps_in: j].T.values)
-            temp = self.fog_df.iloc[i + num_timesteps_in:j].T.values
-            anomaly.append(np.array([1 if sum(_row) >= 1 else 0 for _row in temp]).T)
+            anomaly.append(self.fog_df.iloc[i + num_timesteps_in:j].T.values[:, 0])
 
         features = torch.FloatTensor(features)
         targets = torch.FloatTensor(target)
@@ -75,7 +74,16 @@ class Temporal_Graph_Signal(object):
         for batch in range(len(indices)):
             _data.append(Data(x=features[batch], y=targets[batch], anomaly=anomaly_point[batch], time_stamp=None))
 
-        return _data
+        if weight:
+            total_samples = anomaly_point.shape[0]
+            nSamples = [[total_samples - int(num_samples), int(num_samples)] for num_samples in sum(anomaly_point)]
+
+            normedWeights = [[1 - (x[0] / sum(x)), 1 - (x[1] / sum(x))] for x in nSamples]
+
+            return _data, normedWeights
+
+        else:
+            return _data
 
     def get_dataset(self, num_timesteps_in: int = 12, num_timesteps_out: int = 12, batch_size: int = 32,
                     return_loader=True):
@@ -98,10 +106,10 @@ class Temporal_Graph_Signal(object):
         train_idx = int(total_length_dataset * 0.7)
         valid_idx = int(total_length_dataset * 0.2)
         train_indices = self.indices[:train_idx]
-        validation_indices = self.indices[train_idx:train_idx+valid_idx]
-        test_indices = self.indices[train_idx+valid_idx:]
+        validation_indices = self.indices[train_idx:train_idx + valid_idx]
+        test_indices = self.indices[train_idx + valid_idx:]
 
-        train_dataset = self._generate_dataset(train_indices, num_timesteps_in)
+        train_dataset = self._generate_dataset(train_indices, num_timesteps_in, weight=True)
         valid_dataset = self._generate_dataset(validation_indices, num_timesteps_in)
         test_dataset = self._generate_dataset(test_indices, num_timesteps_in)
 
