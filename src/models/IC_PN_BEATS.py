@@ -95,7 +95,7 @@ class IC_PN_BEATS(nn.Module):
         for stack_id in range(self.singular_stack_num):
             self.sigular_stacks.append(self.create_stack('generic', stack_id=stack_id, theta_type='singular'))
 
-        if self.config.train.loss_type == 'classification' or 'combine_loss':
+        if self.config.train.loss_type == 'classification' or self.config.train.combine_loss:
             self.classification_mlp = nn.Linear(self.forecast_length, 2)
             self.parameters.extend(self.classification_mlp.parameters())
 
@@ -246,17 +246,6 @@ class IC_PN_BEATS(nn.Module):
                 _singual_forecast.append(singular_f.cpu().detach().numpy())
                 _singual_attention_matrix.append(attn.cpu().detach().numpy())
 
-        if self.config.train.loss_type == 'classification' or 'combine_loss':
-            classification_input = forecast.view(self.batch_size, self.nodes_num, self.forecast_length)
-            classification_output = torch.zeros(size=(self.batch_size, len(self.target_col_num), 2)).to(device=device)
-            for ii in range(len(self.target_col_num)):
-                _input = classification_input[:, self.target_col_num[ii], :]
-                _output = self.classification_mlp(_input)
-                _output = self.softmax(_output)
-                classification_output[:, ii, :] = _output
-
-            forecast = [forecast, classification_output]
-
         if interpretability:
             if self.stack_num > 0:
                 outputs['per_trend_backcast'] = np.stack(_per_trend_backcast, axis=0)
@@ -277,4 +266,18 @@ class IC_PN_BEATS(nn.Module):
 
             outputs['attention_matrix'] = attn_matrix
 
-        return backcast, [forecast], outputs
+        if self.config.train.loss_type == 'classification' or self.config.train.combine_loss:
+            classification_input = forecast.view(self.batch_size, self.nodes_num, self.forecast_length)
+            classification_output = torch.zeros(size=(self.batch_size, len(self.target_col_num), 2)).to(device=device)
+            for ii in range(len(self.target_col_num)):
+                _input = classification_input[:, self.target_col_num[ii], :]
+                _output = self.classification_mlp(_input)
+                _output = self.softmax(_output)
+                classification_output[:, ii, :] = _output
+
+            forecast = [forecast, classification_output]
+
+            return backcast, forecast, outputs
+
+        else:
+            return backcast, [forecast], outputs
