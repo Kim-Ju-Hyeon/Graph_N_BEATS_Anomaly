@@ -186,7 +186,7 @@ class Runner(object):
                 classi_loss = torch.Tensor([0]).to(device=self.device)
                 if self.train_conf.loss_type == 'classification' or self.combine_loss:
                     anomaly = model_output[1]
-                    anomaly_target = data_batch.anomaly.view(self.train_conf.batch_size, len(self.target_col_num))
+                    anomaly_target = data_batch.anomaly.view(self.train_conf.batch_size, len(self.target_col_num), 2)
                     for ii in range(len(self.normedWeight)):
                         classi_loss += self.classification_loss[ii](anomaly[:, ii, :],
                                                                     anomaly_target[:, ii]) * (
@@ -278,7 +278,7 @@ class Runner(object):
             classi_loss = torch.Tensor([0]).to(device=self.device)
             if self.train_conf.loss_type == 'classification' or self.combine_loss:
                 anomaly = model_output[1]
-                anomaly_target = data_batch.anomaly.view(self.train_conf.batch_size, len(self.target_col_num))
+                anomaly_target = data_batch.anomaly.view(self.train_conf.batch_size, len(self.target_col_num), 2)
                 for ii in range(len(self.normedWeight)):
                     classi_loss += self.classification_loss[ii](anomaly[:, ii, :], anomaly_target[:, ii]) * (
                                 1 / len(self.target_col_num))
