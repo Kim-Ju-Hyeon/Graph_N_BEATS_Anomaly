@@ -16,11 +16,11 @@ train:
     epoch: 5
     loss_function : MSE
     combine_loss: False
-    loss_type: classification # classification, regression_all, regression_vis
+    loss_type: regression_all # classification, regression_all, regression_vis
     lr: 1.0e-3
     wd: 0.0e-4 # Adam
     momentum: 0.9 # SGD
-    batch_size : 2
+    batch_size : 256
 
 graph_learning:
     graph_learning: True
