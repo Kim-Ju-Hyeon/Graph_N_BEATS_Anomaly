@@ -272,8 +272,8 @@ class Runner(object):
             with torch.no_grad():
                 _backcast_output, model_output, outputs = self.best_model(data_batch.x, interpretability=True)
 
-            forecast = model_output[0].view(self.config.train.batch_size, self.dataset_conf.nodes_num, -1)
-            groud_truth = data_batch.y.view(self.config.train.batch_size, self.dataset_conf.nodes_num, -1)
+            forecast = model_output[0].view(self.dataset_conf.nodes_num, -1)
+            groud_truth = data_batch.y.view(self.dataset_conf.nodes_num, -1)
 
             classi_loss = torch.Tensor([0]).to(device=self.device)
             if self.train_conf.loss_type == 'classification' or self.combine_loss:
