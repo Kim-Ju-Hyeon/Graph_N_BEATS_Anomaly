@@ -69,6 +69,7 @@ class Temporal_Graph_Signal(object):
         features = torch.FloatTensor(np.array(features))
         targets = torch.FloatTensor(np.array(target))
         anomaly_point = torch.Tensor(np.array(anomaly))
+        print(anomaly_point.shape)
 
         _data = []
         for batch in range(len(indices)):
