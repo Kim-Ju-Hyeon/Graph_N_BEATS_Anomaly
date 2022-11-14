@@ -1,8 +1,8 @@
 ---
 exp_name: test # 0417
 exp_dir: ../exp
-use_gpu: False
-device: cpu
+use_gpu: True
+device: 0
 seed: None # If you want to reproduce set the seed
 model_name: IC_PN_BEATS # N_model IC_PN_BEATS
 train_resume: False
@@ -13,14 +13,14 @@ dataset:
 
 train:
     optimizer: Adam
-    epoch: 2
+    epoch: 5
     loss_function : MSE
     combine_loss: False
     loss_type: # classification, regression_all, regression_vis
     lr: 1.0e-3
     wd: 0.0e-4 # Adam
     momentum: 0.9 # SGD
-    batch_size : 32
+    batch_size : 128
 
 graph_learning:
     graph_learning: True
