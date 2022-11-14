@@ -31,18 +31,13 @@ class Temporal_Graph_Signal(object):
         fog_col = [_col for _col in _col_names if 'Fog' in _col]
         columns = [_col for _col in _col_names if _col not in fog_col]
 
-        print(fog_col)
-        print(columns)
+        _dataframe = df[columns]
+        self.fog_df = df[fog_col]
+
         index_val = df.index
 
-        scaled_df = self.scaler.scale(df.to_numpy().T)
-        dataframe = pd.DataFrame(scaled_df.T, columns=list(_col_names), index=index_val)
-
-        self.dataframe = dataframe[columns]
-        self.fog_df = dataframe[fog_col]
-
-        print(self.dataframe)
-        print(self.fog_df)
+        scaled_df = self.scaler.scale(_dataframe.to_numpy().T)
+        self.dataframe = pd.DataFrame(scaled_df.T, columns=list(_col_names), index=index_val)
 
         if not os.path.isfile(os.path.join(self.path, f'scaler.pickle')):
             pickle.dump(self.scaler, open(os.path.join(self.path, f'scaler.pickle'), 'wb'))
@@ -67,6 +62,7 @@ class Temporal_Graph_Signal(object):
     def _generate_dataset(self, indices, num_timesteps_in: int = 12, weight=False):
         features, target, anomaly = [], [], []
 
+        print(indices)
         for i, j in indices:
             features.append(self.dataframe.iloc[i: i + num_timesteps_in].T.values)
             target.append(self.dataframe.iloc[i + num_timesteps_in: j].T.values)
@@ -75,7 +71,6 @@ class Temporal_Graph_Signal(object):
         features = torch.FloatTensor(np.array(features))
         targets = torch.FloatTensor(np.array(target))
         anomaly_point = torch.Tensor(np.array(anomaly))
-        print(anomaly_point.shape)
 
         _data = []
         for batch in range(len(indices)):
@@ -83,7 +78,6 @@ class Temporal_Graph_Signal(object):
 
         if weight:
             total_samples = anomaly_point.shape[0]
-            print(sum(anomaly_point))
             nSamples = [[total_samples - int(num_samples), int(num_samples)] for num_samples in sum(anomaly_point)]
 
             normedWeights = [[1 - (x[0] / sum(x)), 1 - (x[1] / sum(x))] for x in nSamples]
@@ -95,7 +89,7 @@ class Temporal_Graph_Signal(object):
 
     def get_dataset(self, num_timesteps_in: int = 12, num_timesteps_out: int = 12, batch_size: int = 32,
                     return_loader=True):
-        if not os.path.isfile(os.path.join(self.path, f'indices.pickle')):
+        if not os.path.isfile(os.path.join(self.path, f'indices_{num_timesteps_in}_{num_timesteps_out}.pickle')):
             self.dataframe.index = pd.to_datetime(self.dataframe.index)
             self.indices = [
                 (i, i + (num_timesteps_in + num_timesteps_out))
