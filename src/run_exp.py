@@ -15,7 +15,7 @@ import yaml
 @click.option('--conf_file_path', type=click.STRING, default=None)
 def main(conf_file_path):
     exp_list = ['classification', 'regression_all', 'regression_vis']
-    bool_list = ['True', 'False']
+    bool_list = [True, False]
     for loss_type in exp_list:
         for combine_loss in bool_list:
             if loss_type == 'classification' and combine_loss:
@@ -32,7 +32,7 @@ def main(conf_file_path):
 
                     config.exp_name = config.exp_name
 
-                    config.exp_dir = os.path.join(config.exp_dir, str(config.exp_name)+loss_type)
+                    config.exp_dir = os.path.join(config.exp_dir, str(config.exp_name)+'_'+loss_type)
                     config.exp_sub_dir = os.path.join(config.exp_dir, sub_dir)
                     config.model_save = os.path.join(config.exp_sub_dir, "model_save")
 
