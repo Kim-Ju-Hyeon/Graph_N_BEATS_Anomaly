@@ -9,6 +9,7 @@ import datetime
 import pytz
 from easydict import EasyDict as edict
 import yaml
+import time
 
 
 @click.command()
@@ -45,6 +46,7 @@ def main(conf_file_path):
                     logger = setup_logging('INFO', log_file, logger_name=str(config.seed))
                     logger.info("Writing log file to {}".format(log_file))
                     logger.info("Exp instance id = {}".format(config.exp_name))
+                    time.sleep(1)
 
                     # try:
                     #     runner = Runner(config=config)
