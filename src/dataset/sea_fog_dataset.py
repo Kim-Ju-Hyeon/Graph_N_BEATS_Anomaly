@@ -37,7 +37,7 @@ class Temporal_Graph_Signal(object):
         index_val = df.index
 
         scaled_df = self.scaler.scale(_dataframe.to_numpy().T)
-        self.dataframe = pd.DataFrame(scaled_df.T, columns=list(_col_names), index=index_val)
+        self.dataframe = pd.DataFrame(scaled_df.T, columns=columns, index=index_val)
 
         if not os.path.isfile(os.path.join(self.path, f'scaler.pickle')):
             pickle.dump(self.scaler, open(os.path.join(self.path, f'scaler.pickle'), 'wb'))
