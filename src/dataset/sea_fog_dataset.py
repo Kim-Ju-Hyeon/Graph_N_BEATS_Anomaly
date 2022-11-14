@@ -76,6 +76,7 @@ class Temporal_Graph_Signal(object):
 
         if weight:
             total_samples = anomaly_point.shape[0]
+            print(sum(anomaly_point))
             nSamples = [[total_samples - int(num_samples), int(num_samples)] for num_samples in sum(anomaly_point)]
 
             normedWeights = [[1 - (x[0] / sum(x)), 1 - (x[1] / sum(x))] for x in nSamples]
