@@ -12,6 +12,7 @@ from models.IC_PN_BEATS import IC_PN_BEATS
 from models.N_model import N_model
 from utils.train_helper import model_snapshot, load_model
 from utils.logger import get_logger
+from torch.autograd import Variable
 
 from dataset.sea_fog_dataset import Temporal_Graph_Signal
 
@@ -38,15 +39,21 @@ class Runner(object):
         self.dataset_conf = config.dataset
         self.nodes_num = config.dataset.nodes_num
         self.target_col_num = [10, 21, 32, 43, 54]
+        self.combine_loss = config.dataset.combine_loss
 
-        if self.train_conf.loss_function == 'MAE':
-            self.loss = nn.L1Loss()
-        elif self.train_conf.loss_function == 'Poisson':
-            self.loss = nn.PoissonNLLLoss()
-        elif self.train_conf.loss_function == 'MSE':
-            self.loss = nn.MSELoss()
-        else:
-            raise ValueError('Non-supported Loss Function')
+        if self.train_conf.loss_type == 'classification' or 'combine_loss':
+            self.classification_loss = []
+            for weight in self.normedWeight:
+                weight = torch.Tensor(weight).to(device=self.device)
+                self.classification_loss.append(nn.CrossEntropyLoss(weight=weight))
+
+        if self.train_conf.loss_type == 'regression_all' or 'regression_vis' or 'combine_loss':
+            if self.train_conf.loss_function == 'MAE':
+                self.regression_loss = nn.L1Loss()
+            elif self.train_conf.loss_function == 'MSE':
+                self.regression_loss = nn.MSELoss()
+            else:
+                raise ValueError('Non-supported Loss Function')
 
         if self.config.model_name == 'IC_PN_BEATS':
             self.model = IC_PN_BEATS(self.config)
@@ -69,10 +76,13 @@ class Runner(object):
         yaml.dump(edict2dict(config), open(save_name, 'w'), default_flow_style=False)
 
         loader.preprocess_dataset()
-        self.train_dataset, self.valid_dataset, self.test_dataset = loader.get_dataset(
+        _train_dataset, self.valid_dataset, self.test_dataset = loader.get_dataset(
             num_timesteps_in=config.forecasting_module.backcast_length,
             num_timesteps_out=config.forecasting_module.forecast_length,
             batch_size=config.train.batch_size)
+
+        self.train_dataset = _train_dataset[0]
+        self.normedWeight = _train_dataset[1]
 
         self.scaler = loader.get_scaler()
 
@@ -114,15 +124,31 @@ class Runner(object):
                 if self.use_gpu and (self.device != 'cpu'):
                     data_batch = data_batch.to(device=self.device)
 
-                backcast, forecast, _ = self.model(data_batch.x, interpretability=False)
-                forecast = forecast.view(self.train_conf.batch_size, self.dataset_conf.nodes_num, -1)
+                backcast, model_output, _ = self.model(data_batch.x, interpretability=False)
+                forecast = model_output[0].view(self.train_conf.batch_size, self.dataset_conf.nodes_num, -1)
                 groud_truth = data_batch.y.view(self.train_conf.batch_size, self.dataset_conf.nodes_num, -1)
 
-                loss = self.loss(forecast[:, 10, :], groud_truth[:, 10, :]) + \
-                       self.loss(forecast[:, 21, :], groud_truth[:, 21, :]) + \
-                       self.loss(forecast[:, 32, :], groud_truth[:, 32, :]) + \
-                       self.loss(forecast[:, 43, :], groud_truth[:, 43, :]) + \
-                       self.loss(forecast[:, 54, :], groud_truth[:, 54, :])
+                classi_loss = Variable(torch.Tensor([0]), requires_grad=True).to(device=self.device)
+                if self.train_conf.loss_type == 'classification' or self.combine_loss:
+                    anomaly = model_output[1]
+                    for ii in range(len(self.normedWeight)):
+                        classi_loss += self.classification_loss[ii](anomaly[:, ii, :], data_batch.anomaly[:, ii])*(1/len(self.target_col_num))
+
+                regress_loss = Variable(torch.Tensor([0]), requires_grad=True).to(device=self.device)
+                if self.train_conf.loss_type == 'regression_all':
+                    regress_loss += self.regression_loss(forecast, groud_truth)
+                elif self.train_conf.loss_type == 'regression_vis':
+                    for ii in range(len(self.target_col_num)):
+                        col = self.target_col_num[ii]
+                        regress_loss += self.regression_loss(forecast[:, col, :], groud_truth[:, col, :])*(1/len(self.target_col_num))
+
+                if self.combine_loss:
+                    loss = 0.5*classi_loss + 0.5*regress_loss
+                else:
+                    if self.train_conf.loss_type == 'classification':
+                        loss = classi_loss
+                    else:
+                        loss = regress_loss
 
                 # backward pass (accumulates gradients).
                 loss.backward()
@@ -147,20 +173,40 @@ class Runner(object):
 
             val_loss = []
             for data_batch in tqdm(self.valid_dataset):
-
                 if self.use_gpu and (self.device != 'cpu'):
                     data_batch = data_batch.to(device=self.device)
-                with torch.no_grad():
-                    _, forecast, _ = self.model(data_batch.x, interpretability=False)
 
-                forecast = forecast.view(self.train_conf.batch_size, self.dataset_conf.nodes_num, -1)
+                with torch.no_grad():
+                    _, model_output, _ = self.model(data_batch.x, interpretability=False)
+
+                forecast = model_output[0].view(self.train_conf.batch_size, self.dataset_conf.nodes_num, -1)
                 groud_truth = data_batch.y.view(self.train_conf.batch_size, self.dataset_conf.nodes_num, -1)
 
-                loss = self.loss(forecast[:, 10, :], groud_truth[:, 10, :]) + \
-                       self.loss(forecast[:, 21, :], groud_truth[:, 21, :]) + \
-                       self.loss(forecast[:, 32, :], groud_truth[:, 32, :]) + \
-                       self.loss(forecast[:, 43, :], groud_truth[:, 43, :]) + \
-                       self.loss(forecast[:, 54, :], groud_truth[:, 54, :])
+                classi_loss = Variable(torch.Tensor([0]), requires_grad=True).to(device=self.device)
+                if self.train_conf.loss_type == 'classification' or self.combine_loss:
+                    anomaly = model_output[1]
+                    for ii in range(len(self.normedWeight)):
+                        classi_loss += self.classification_loss[ii](anomaly[:, ii, :],
+                                                                    data_batch.anomaly[:, ii]) * (
+                                                   1 / len(self.target_col_num))
+
+                regress_loss = Variable(torch.Tensor([0]), requires_grad=True).to(device=self.device)
+                if self.train_conf.loss_type == 'regression_all':
+                    regress_loss += self.regression_loss(forecast, groud_truth)
+
+                elif self.train_conf.loss_type == 'regression_vis':
+                    for ii in range(len(self.target_col_num)):
+                        col = self.target_col_num[ii]
+                        regress_loss += self.regression_loss(forecast[:, col, :], groud_truth[:, col, :]) * (
+                                    1 / len(self.target_col_num))
+
+                if self.combine_loss:
+                    loss = 0.5 * classi_loss + 0.5 * regress_loss
+                else:
+                    if self.train_conf.loss_type == 'classification':
+                        loss = classi_loss
+                    else:
+                        loss = regress_loss
 
                 val_loss += [float(loss.data.cpu().numpy())]
 
@@ -222,20 +268,38 @@ class Runner(object):
                 data_batch = data_batch.to(device=self.device)
 
             with torch.no_grad():
-                _backcast_output, _forecast_output, outputs = self.best_model(data_batch.x, interpretability=True)
+                _backcast_output, model_output, outputs = self.best_model(data_batch.x, interpretability=True)
 
-            forecast = _forecast_output.view(self.train_conf.batch_size, self.dataset_conf.nodes_num, -1)
-            groud_truth = data_batch.y.view(self.train_conf.batch_size, self.dataset_conf.nodes_num, -1)
+            forecast = model_output[0].view(self.config.train.batch_size, self.dataset_conf.nodes_num, -1)
+            groud_truth = data_batch.y.view(self.config.train.batch_size, self.dataset_conf.nodes_num, -1)
 
-            loss = self.loss(forecast[:, 10, :], groud_truth[:, 10, :]) + \
-                   self.loss(forecast[:, 21, :], groud_truth[:, 21, :]) + \
-                   self.loss(forecast[:, 32, :], groud_truth[:, 32, :]) + \
-                   self.loss(forecast[:, 43, :], groud_truth[:, 43, :]) + \
-                   self.loss(forecast[:, 54, :], groud_truth[:, 54, :])
+            classi_loss = Variable(torch.Tensor([0]), requires_grad=True).to(device=self.device)
+            if self.train_conf.loss_type == 'classification' or self.combine_loss:
+                anomaly = model_output[1]
+                for ii in range(len(self.normedWeight)):
+                    classi_loss += self.classification_loss[ii](anomaly[:, ii, :], data_batch.anomaly[:, ii]) * (
+                                1 / len(self.target_col_num))
+
+            regress_loss = Variable(torch.Tensor([0]), requires_grad=True).to(device=self.device)
+            if self.train_conf.loss_type == 'regression_all':
+                regress_loss += self.regression_loss(forecast, groud_truth)
+            elif self.train_conf.loss_type == 'regression_vis':
+                for ii in range(len(self.target_col_num)):
+                    col = self.target_col_num[ii]
+                    regress_loss += self.regression_loss(forecast[:, col, :], groud_truth[:, col, :]) * (
+                                1 / len(self.target_col_num))
+
+            if self.combine_loss:
+                loss = 0.5 * classi_loss + 0.5 * regress_loss
+            else:
+                if self.train_conf.loss_type == 'classification':
+                    loss = classi_loss
+                else:
+                    loss = regress_loss
 
             test_loss += [float(loss.data.cpu().detach().numpy())]
 
-            forecast_list += [_forecast_output.cpu().detach().numpy()]
+            forecast_list += [forecast.cpu().detach().numpy()]
             backcast_list += [_backcast_output.cpu().detach().numpy()]
 
             target += [data_batch.y.cpu().detach().numpy()]
