@@ -30,6 +30,9 @@ class Temporal_Graph_Signal(object):
         _col_names = df.columns
         fog_col = [_col for _col in _col_names if 'Fog' in _col]
         columns = [_col for _col in _col_names if _col not in fog_col]
+
+        print(fog_col)
+        print(columns)
         index_val = df.index
 
         scaled_df = self.scaler.scale(df.to_numpy().T)
@@ -37,6 +40,9 @@ class Temporal_Graph_Signal(object):
 
         self.dataframe = dataframe[columns]
         self.fog_df = dataframe[fog_col]
+
+        print(self.dataframe)
+        print(self.fog_df)
 
         if not os.path.isfile(os.path.join(self.path, f'scaler.pickle')):
             pickle.dump(self.scaler, open(os.path.join(self.path, f'scaler.pickle'), 'wb'))
