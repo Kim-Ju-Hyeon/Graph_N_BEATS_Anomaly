@@ -39,7 +39,7 @@ class Runner(object):
         self.dataset_conf = config.dataset
         self.nodes_num = config.dataset.nodes_num
         self.target_col_num = [10, 21, 32, 43, 54]
-        self.combine_loss = config.dataset.combine_loss
+        self.combine_loss = config.train.combine_loss
 
         if self.train_conf.loss_type == 'classification' or 'combine_loss':
             self.classification_loss = []

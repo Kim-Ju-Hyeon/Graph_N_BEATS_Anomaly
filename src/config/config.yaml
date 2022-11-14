@@ -1,8 +1,8 @@
 ---
 exp_name: test # 0417
 exp_dir: ../exp
-use_gpu: True
-device: 1
+use_gpu: False
+device: cpu
 seed: None # If you want to reproduce set the seed
 model_name: IC_PN_BEATS # N_model IC_PN_BEATS
 train_resume: False
@@ -39,8 +39,8 @@ graph_learning:
 
 forecasting_module:
     # IC_PN_BEATS
-    stack_num: 3
-    singular_stack_num: 3
+    stack_num: 1
+    singular_stack_num: 1
 
     # N_model
     shapre_weights_in_stack: True
@@ -60,6 +60,6 @@ forecasting_module:
 
     pooling_mode: average # max average
     # Must Match 1) stack_num when use IC-PN-BEATS 2) len(stack_types) when use N-model (n-hits)
-    n_pool_kernel_size: [2, 2, 2]
-    n_stride_size: [2, 2, 2]
-    n_freq_downsample: [168, 24, 1]
+    n_pool_kernel_size: [2]
+    n_stride_size: [2]
+    n_freq_downsample: [168]

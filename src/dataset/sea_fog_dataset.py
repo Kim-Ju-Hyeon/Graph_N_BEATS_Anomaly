@@ -66,9 +66,9 @@ class Temporal_Graph_Signal(object):
             target.append(self.dataframe.iloc[i + num_timesteps_in: j].T.values)
             anomaly.append(self.fog_df.iloc[i + num_timesteps_in:j].T.values[:, 0])
 
-        features = torch.FloatTensor(features)
-        targets = torch.FloatTensor(target)
-        anomaly_point = torch.Tensor(anomaly)
+        features = torch.FloatTensor(np.array(features))
+        targets = torch.FloatTensor(np.array(target))
+        anomaly_point = torch.Tensor(np.array(anomaly))
 
         _data = []
         for batch in range(len(indices)):
@@ -83,7 +83,7 @@ class Temporal_Graph_Signal(object):
             return _data, normedWeights
 
         else:
-            return _data
+            return [_data]
 
     def get_dataset(self, num_timesteps_in: int = 12, num_timesteps_out: int = 12, batch_size: int = 32,
                     return_loader=True):
@@ -110,17 +110,18 @@ class Temporal_Graph_Signal(object):
         test_indices = self.indices[train_idx + valid_idx:]
 
         train_dataset = self._generate_dataset(train_indices, num_timesteps_in, weight=True)
+        label_norm = train_dataset[1]
         valid_dataset = self._generate_dataset(validation_indices, num_timesteps_in)
         test_dataset = self._generate_dataset(test_indices, num_timesteps_in)
 
         if return_loader:
-            train = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True,
+            train = DataLoader(train_dataset[0], batch_size=batch_size, shuffle=True, drop_last=True,
                                num_workers=self.num_workers, pin_memory=True)
-            valid = DataLoader(valid_dataset, batch_size=batch_size, shuffle=True, drop_last=True,
+            valid = DataLoader(valid_dataset[0], batch_size=batch_size, shuffle=True, drop_last=True,
                                num_workers=self.num_workers, pin_memory=True)
-            test = DataLoader(test_dataset, batch_size=1, shuffle=True, num_workers=self.num_workers, pin_memory=True)
+            test = DataLoader(test_dataset[0], batch_size=1, shuffle=True, num_workers=self.num_workers, pin_memory=True)
 
-            return train, valid, test
+            return [train, label_norm], valid, test
 
         else:
             return train_dataset, valid_dataset, test_dataset
