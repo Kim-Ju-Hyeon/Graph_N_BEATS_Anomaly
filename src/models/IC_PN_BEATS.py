@@ -59,6 +59,8 @@ class IC_PN_BEATS(nn.Module):
         self.n_stride_size = config.forecasting_module.n_stride_size
         self.n_freq_downsample = config.forecasting_module.n_freq_downsample
 
+        self.target_col_num = [10, 21, 32, 43, 54]
+
         if (self.config.dataset.name == 'METR-LA') or (self.config.dataset.name == 'PEMS-BAY'):
             self.update_only_message = config.forecasting_module.update_only_message
         else:
@@ -92,6 +94,12 @@ class IC_PN_BEATS(nn.Module):
 
         for stack_id in range(self.singular_stack_num):
             self.sigular_stacks.append(self.create_stack('generic', stack_id=stack_id, theta_type='singular'))
+
+        if self.config.train.loss_type == 'classification' or self.config.train.combine_loss:
+            self.classification_mlp = nn.Linear(self.forecast_length, 2)
+            self.parameters.extend(self.classification_mlp.parameters())
+
+            self.softmax = nn.Softmax(dim=-1)
 
         self.parameters = nn.ParameterList(self.parameters)
 
@@ -258,4 +266,18 @@ class IC_PN_BEATS(nn.Module):
 
             outputs['attention_matrix'] = attn_matrix
 
-        return backcast, forecast, outputs
+        if self.config.train.loss_type == 'classification' or self.config.train.combine_loss:
+            classification_input = forecast.view(self.batch_size, self.nodes_num, self.forecast_length)
+            classification_output = torch.zeros(size=(self.batch_size, len(self.target_col_num), 2)).to(device=device)
+            for ii in range(len(self.target_col_num)):
+                _input = classification_input[:, self.target_col_num[ii], :]
+                _output = self.classification_mlp(_input)
+                _output = self.softmax(_output)
+                classification_output[:, ii, :] = _output
+
+            forecast = [forecast, classification_output]
+
+            return backcast, forecast, outputs
+
+        else:
+            return backcast, [forecast], outputs

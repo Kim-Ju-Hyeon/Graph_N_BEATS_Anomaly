@@ -6,6 +6,8 @@ from glob import glob
 from torch_geometric.data import Data
 from torch_geometric.loader import DataLoader
 
+import torch.nn.functional as F
+
 from utils.scalers import Scaler
 import os
 import pandas as pd
@@ -30,13 +32,14 @@ class Temporal_Graph_Signal(object):
         _col_names = df.columns
         fog_col = [_col for _col in _col_names if 'Fog' in _col]
         columns = [_col for _col in _col_names if _col not in fog_col]
+
+        _dataframe = df[columns]
+        self.fog_df = df[fog_col]
+
         index_val = df.index
 
-        scaled_df = self.scaler.scale(df.to_numpy().T)
-        dataframe = pd.DataFrame(scaled_df.T, columns=list(_col_names), index=index_val)
-
-        self.dataframe = dataframe[columns]
-        self.fog_df = dataframe[fog_col]
+        scaled_df = self.scaler.scale(_dataframe.to_numpy().T)
+        self.dataframe = pd.DataFrame(scaled_df.T, columns=columns, index=index_val)
 
         if not os.path.isfile(os.path.join(self.path, f'scaler.pickle')):
             pickle.dump(self.scaler, open(os.path.join(self.path, f'scaler.pickle'), 'wb'))
@@ -58,28 +61,35 @@ class Temporal_Graph_Signal(object):
         self.freq = '10min'
         self.url = None
 
-    def _generate_dataset(self, indices, num_timesteps_in: int = 12):
+    def _generate_dataset(self, indices, num_timesteps_in: int = 12, weight=False):
         features, target, anomaly = [], [], []
 
         for i, j in indices:
             features.append(self.dataframe.iloc[i: i + num_timesteps_in].T.values)
             target.append(self.dataframe.iloc[i + num_timesteps_in: j].T.values)
-            temp = self.fog_df.iloc[i + num_timesteps_in:j].T.values
-            anomaly.append(np.array([1 if sum(_row) >= 1 else 0 for _row in temp]).T)
 
-        features = torch.FloatTensor(features)
-        targets = torch.FloatTensor(target)
-        anomaly_point = torch.Tensor(anomaly)
+            temp = self.fog_df.iloc[i + num_timesteps_in:j].T.values[:, 0]
+            anomaly.append(F.one_hot(torch.from_numpy(temp), 2).type(torch.FloatTensor))
+
+        features = torch.FloatTensor(np.array(features))
+        targets = torch.FloatTensor(np.array(target))
+        anomaly_point = torch.stack(anomaly, axis=0)
 
         _data = []
         for batch in range(len(indices)):
             _data.append(Data(x=features[batch], y=targets[batch], anomaly=anomaly_point[batch], time_stamp=None))
 
-        return _data
+        if weight:
+            normedWeights = [[1 - (x[0].item() / sum(x).item()), 1-(x[1].item() / sum(x).item())] for x in sum(anomaly)]
+
+            return _data, normedWeights
+
+        else:
+            return [_data]
 
     def get_dataset(self, num_timesteps_in: int = 12, num_timesteps_out: int = 12, batch_size: int = 32,
                     return_loader=True):
-        if not os.path.isfile(os.path.join(self.path, f'indices.pickle')):
+        if not os.path.isfile(os.path.join(self.path, f'indices_{num_timesteps_in}_{num_timesteps_out}.pickle')):
             self.dataframe.index = pd.to_datetime(self.dataframe.index)
             self.indices = [
                 (i, i + (num_timesteps_in + num_timesteps_out))
@@ -98,21 +108,22 @@ class Temporal_Graph_Signal(object):
         train_idx = int(total_length_dataset * 0.7)
         valid_idx = int(total_length_dataset * 0.2)
         train_indices = self.indices[:train_idx]
-        validation_indices = self.indices[train_idx:train_idx+valid_idx]
-        test_indices = self.indices[train_idx+valid_idx:]
+        validation_indices = self.indices[train_idx:train_idx + valid_idx]
+        test_indices = self.indices[train_idx + valid_idx:]
 
-        train_dataset = self._generate_dataset(train_indices, num_timesteps_in)
+        train_dataset = self._generate_dataset(train_indices, num_timesteps_in, weight=True)
+        label_norm = train_dataset[1]
         valid_dataset = self._generate_dataset(validation_indices, num_timesteps_in)
         test_dataset = self._generate_dataset(test_indices, num_timesteps_in)
 
         if return_loader:
-            train = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True,
+            train = DataLoader(train_dataset[0], batch_size=batch_size, shuffle=True, drop_last=True,
                                num_workers=self.num_workers, pin_memory=True)
-            valid = DataLoader(valid_dataset, batch_size=batch_size, shuffle=True, drop_last=True,
+            valid = DataLoader(valid_dataset[0], batch_size=batch_size, shuffle=True, drop_last=True,
                                num_workers=self.num_workers, pin_memory=True)
-            test = DataLoader(test_dataset, batch_size=1, shuffle=True, num_workers=self.num_workers, pin_memory=True)
+            test = DataLoader(test_dataset[0], batch_size=1, shuffle=True, num_workers=self.num_workers, pin_memory=True)
 
-            return train, valid, test
+            return [train, label_norm], valid, test
 
         else:
             return train_dataset, valid_dataset, test_dataset
