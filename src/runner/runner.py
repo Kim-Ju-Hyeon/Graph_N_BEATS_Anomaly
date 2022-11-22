@@ -307,7 +307,7 @@ class Runner(object):
             forecast_list += [forecast.cpu().detach().numpy()]
             backcast_list += [_backcast_output.cpu().detach().numpy()]
             if self.train_conf.loss_type == 'classification' or self.combine_loss:
-                anomaly_list += [anomaly]
+                anomaly_list += [anomaly.cpu().detach().numpy()]
 
             target += [data_batch.y.cpu().detach().numpy()]
 
@@ -343,7 +343,7 @@ class Runner(object):
         results['attention_matrix'] = np.stack(attention_matrix, axis=0)
 
         if self.train_conf.loss_type == 'classification' or self.combine_loss:
-            results['anomaly_pred'] = anomaly_list
+            results['anomaly_pred'] = np.stack(anomaly_list, axis=0)
 
         target = np.stack(target, axis=0)
 
