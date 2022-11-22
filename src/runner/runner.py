@@ -289,11 +289,8 @@ class Runner(object):
             elif self.train_conf.loss_type == 'regression_vis':
                 for ii in range(len(self.target_col_num)):
                     col = self.target_col_num[ii]
-                    
-                    print(forecast.shape)
-                    print(groud_truth.shape)
 
-                    regress_loss += self.regression_loss(forecast[:, col, :], groud_truth[:, col, :]) * (
+                    regress_loss += self.regression_loss(forecast[col, :], groud_truth[col, :]) * (
                                 1 / len(self.target_col_num))
 
             if self.combine_loss:
