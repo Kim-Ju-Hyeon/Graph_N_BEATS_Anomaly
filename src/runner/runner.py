@@ -264,6 +264,7 @@ class Runner(object):
             stack_forecast = []
 
         attention_matrix = []
+        anomaly_list = []
 
         for data_batch in tqdm(self.test_dataset):
             if self.use_gpu and (self.device != 'cpu'):
@@ -289,7 +290,8 @@ class Runner(object):
             elif self.train_conf.loss_type == 'regression_vis':
                 for ii in range(len(self.target_col_num)):
                     col = self.target_col_num[ii]
-                    regress_loss += self.regression_loss(forecast[:, col, :], groud_truth[:, col, :]) * (
+
+                    regress_loss += self.regression_loss(forecast[col, :], groud_truth[col, :]) * (
                                 1 / len(self.target_col_num))
 
             if self.combine_loss:
@@ -304,6 +306,8 @@ class Runner(object):
 
             forecast_list += [forecast.cpu().detach().numpy()]
             backcast_list += [_backcast_output.cpu().detach().numpy()]
+            if self.train_conf.loss_type == 'classification' or self.combine_loss:
+                anomaly_list += [anomaly.cpu().detach().numpy()]
 
             target += [data_batch.y.cpu().detach().numpy()]
 
@@ -337,6 +341,9 @@ class Runner(object):
         results['forecast'] = np.stack(forecast_list, axis=0)
         results['backcast'] = np.stack(backcast_list, axis=0)
         results['attention_matrix'] = np.stack(attention_matrix, axis=0)
+
+        if self.train_conf.loss_type == 'classification' or self.combine_loss:
+            results['anomaly_pred'] = np.stack(anomaly_list, axis=0)
 
         target = np.stack(target, axis=0)
 
