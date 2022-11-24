@@ -68,19 +68,20 @@ class Temporal_Graph_Signal(object):
             features.append(self.dataframe.iloc[i: i + num_timesteps_in].T.values)
             target.append(self.dataframe.iloc[i + num_timesteps_in: j].T.values)
 
-            temp = self.fog_df.iloc[i + num_timesteps_in:j].T.values[:, 0]
-            anomaly.append(F.one_hot(torch.from_numpy(temp), 2).type(torch.FloatTensor))
+            temp = self.fog_df.iloc[i + num_timesteps_in:j].T.values[:, -1]
+            anomaly.append(temp)
 
         features = torch.FloatTensor(np.array(features))
         targets = torch.FloatTensor(np.array(target))
-        anomaly_point = torch.stack(anomaly, axis=0)
+        anomaly_point = torch.stack(torch.Tensor(anomaly).type(torch.int16), axis=0)
 
         _data = []
         for batch in range(len(indices)):
             _data.append(Data(x=features[batch], y=targets[batch], anomaly=anomaly_point[batch], time_stamp=None))
 
         if weight:
-            normedWeights = [[1 - (x[0].item() / sum(x).item()), 1-(x[1].item() / sum(x).item())] for x in sum(anomaly)]
+            fog_weight = torch.sum(anomaly_point) / anomaly_point.shape[0]
+            normedWeights = torch.Tensor([1-fog_weight])
 
             return _data, normedWeights
 
