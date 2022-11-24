@@ -61,10 +61,8 @@ class N_model(nn.Module):
             self.stacks.append(self.create_stack(stack_id))
 
         if self.config.train.loss_type == 'classification' or self.config.train.combine_loss:
-            self.classification_mlp = nn.Linear(self.forecast_length, 2)
+            self.classification_mlp = nn.Linear(self.forecast_length, 1)
             self.parameters.extend(self.classification_mlp.parameters())
-
-            self.softmax = nn.Softmax(dim=-1)
 
         self.parameters = nn.ParameterList(self.parameters)
 

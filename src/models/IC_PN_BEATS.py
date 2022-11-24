@@ -96,10 +96,8 @@ class IC_PN_BEATS(nn.Module):
             self.sigular_stacks.append(self.create_stack('generic', stack_id=stack_id, theta_type='singular'))
 
         if self.config.train.loss_type == 'classification' or self.config.train.combine_loss:
-            self.classification_mlp = nn.Linear(self.forecast_length, 2)
+            self.classification_mlp = nn.Linear(self.forecast_length, 1)
             self.parameters.extend(self.classification_mlp.parameters())
-
-            self.softmax = nn.Softmax(dim=-1)
 
         self.parameters = nn.ParameterList(self.parameters)
 

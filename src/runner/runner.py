@@ -42,10 +42,7 @@ class Runner(object):
         self.combine_loss = config.train.combine_loss
 
         if self.train_conf.loss_type == 'classification' or 'combine_loss':
-            self.classification_loss = []
-            for weight in self.normedWeight:
-                weight = torch.Tensor(weight).to(device=self.device)
-                self.classification_loss.append(nn.CrossEntropyLoss(weight=weight))
+            self.classification_loss = nn.BCEWithLogitsLoss(pos_weight=self.normedWeight)
 
         if self.train_conf.loss_type == 'regression_all' or 'regression_vis' or 'combine_loss':
             if self.train_conf.loss_function == 'MAE':
