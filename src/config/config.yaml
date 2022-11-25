@@ -20,7 +20,7 @@ train:
     lr: 1.0e-3
     wd: 0.0e-4 # Adam
     momentum: 0.9 # SGD
-    batch_size : 256
+    batch_size : 16
 
 graph_learning:
     graph_learning: True
@@ -54,8 +54,8 @@ forecasting_module:
     inter_correlation_stack_length: 1
     forecast_length: 6
     backcast_length: 120
-    n_theta_hidden: [512, 512]
-    thetas_dim: [32, 4] # Only Use when N_model Generic
+    n_theta_hidden: [16, 16]
+    thetas_dim: [16, 2] # Only Use when N_model Generic
     message_norm: False
 
     pooling_mode: average # max average

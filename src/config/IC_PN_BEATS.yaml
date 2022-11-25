@@ -1,5 +1,5 @@
 ---
-exp_name: IC_PN_BEATS # 0417
+exp_name: 1126/IC_PN_BEATS # 0417
 exp_dir: ../exp
 use_gpu: True
 device: 0
