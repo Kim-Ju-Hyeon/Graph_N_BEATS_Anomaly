@@ -73,17 +73,18 @@ class Temporal_Graph_Signal(object):
 
         features = torch.FloatTensor(np.array(features))
         targets = torch.FloatTensor(np.array(target))
-        anomaly_point = torch.stack(torch.Tensor(anomaly).type(torch.int16), axis=0)
+        anomaly_point = torch.Tensor(np.array(anomaly))
 
         _data = []
         for batch in range(len(indices)):
             _data.append(Data(x=features[batch], y=targets[batch], anomaly=anomaly_point[batch], time_stamp=None))
 
         if weight:
-            fog_weight = torch.sum(anomaly_point) / anomaly_point.shape[0]
-            normedWeights = torch.Tensor([1-fog_weight])
+            num_fog = torch.sum(anomaly_point)
+            num_good = anomaly_point.shape[0] - num_fog
+            normedWeights = torch.Tensor([num_good/num_fog])
 
-            return _data, normedWeights
+            return [_data, normedWeights]
 
         else:
             return [_data]
@@ -122,7 +123,8 @@ class Temporal_Graph_Signal(object):
                                num_workers=self.num_workers, pin_memory=True)
             valid = DataLoader(valid_dataset[0], batch_size=batch_size, shuffle=True, drop_last=True,
                                num_workers=self.num_workers, pin_memory=True)
-            test = DataLoader(test_dataset[0], batch_size=1, shuffle=True, num_workers=self.num_workers, pin_memory=True)
+            test = DataLoader(test_dataset[0], batch_size=batch_size, shuffle=True, drop_last=True,
+                              num_workers=self.num_workers, pin_memory=True)
 
             return [train, label_norm], valid, test
 
