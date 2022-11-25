@@ -41,7 +41,7 @@ class Runner(object):
         self.target_col_num = [10, 21, 32, 43, 54]
         self.combine_loss = config.train.combine_loss
 
-        if self.train_conf.loss_type == 'classification' or not self.combine_loss:
+        if self.train_conf.loss_type == 'classification' or self.combine_loss:
             self.classification_loss = nn.BCEWithLogitsLoss(pos_weight=self.normedWeight.to(device=self.device))
 
         if (self.train_conf.loss_type == 'regression_all') or (self.train_conf.loss_type == 'regression_vis') or self.combine_loss:
@@ -134,7 +134,8 @@ class Runner(object):
                     forecast = forecast[:, self.target_col_num, :]
                     groud_truth = groud_truth[:, self.target_col_num, :]
 
-                regress_loss = self.regression_loss(forecast, groud_truth)
+                if self.train_conf.loss_type != 'classification':
+                    regress_loss = self.regression_loss(forecast, groud_truth)
 
                 if self.combine_loss:
                     loss = 0.5 * classi_loss + 0.5 * regress_loss
