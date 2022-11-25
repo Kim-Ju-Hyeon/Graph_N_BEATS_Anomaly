@@ -44,7 +44,8 @@ class Runner(object):
         if self.train_conf.loss_type == 'classification' or self.combine_loss:
             self.classification_loss = nn.BCEWithLogitsLoss(pos_weight=self.normedWeight)
 
-        if (self.train_conf.loss_type == 'regression_all') or (self.train_conf.loss_type == 'regression_vis') or self.combine_loss:
+        if (self.train_conf.loss_type == 'regression_all') or (
+                self.train_conf.loss_type == 'regression_vis') or self.combine_loss:
             if self.train_conf.loss_function == 'MAE':
                 self.regression_loss = nn.L1Loss()
             elif self.train_conf.loss_function == 'MSE':
@@ -125,23 +126,19 @@ class Runner(object):
                 forecast = model_output[0].view(self.train_conf.batch_size, self.dataset_conf.nodes_num, -1)
                 groud_truth = data_batch.y.view(self.train_conf.batch_size, self.dataset_conf.nodes_num, -1)
 
-                classi_loss = torch.Tensor([0]).to(device=self.device)
                 if self.train_conf.loss_type == 'classification' or self.combine_loss:
                     anomaly = model_output[1]
-                    anomaly_target = data_batch.anomaly.view(self.train_conf.batch_size, len(self.target_col_num), 2)
-                    for ii in range(len(self.normedWeight)):
-                        classi_loss += self.classification_loss[ii](anomaly[:, ii, :], anomaly_target[:, ii, :])*(1/len(self.target_col_num))
+                    anomaly_target = data_batch.anomaly.view(self.train_conf.batch_size, 5)
+                    classi_loss = self.classification_loss(anomaly, anomaly_target)
 
-                regress_loss = torch.Tensor([0]).to(device=self.device)
-                if self.train_conf.loss_type == 'regression_all':
-                    regress_loss += self.regression_loss(forecast, groud_truth)
-                elif self.train_conf.loss_type == 'regression_vis':
-                    for ii in range(len(self.target_col_num)):
-                        col = self.target_col_num[ii]
-                        regress_loss += self.regression_loss(forecast[:, col, :], groud_truth[:, col, :])*(1/len(self.target_col_num))
+                if self.train_conf.loss_type == 'regression_vis':
+                    forecast = forecast[:, self.target_col_num, :]
+                    groud_truth = groud_truth[:, self.target_col_num, :]
+
+                regress_loss = self.regression_loss(forecast, groud_truth)
 
                 if self.combine_loss:
-                    loss = 0.5*classi_loss + 0.5*regress_loss
+                    loss = 0.5 * classi_loss + 0.5 * regress_loss
                 else:
                     if self.train_conf.loss_type == 'classification':
                         loss = classi_loss
@@ -180,24 +177,16 @@ class Runner(object):
                 forecast = model_output[0].view(self.train_conf.batch_size, self.dataset_conf.nodes_num, -1)
                 groud_truth = data_batch.y.view(self.train_conf.batch_size, self.dataset_conf.nodes_num, -1)
 
-                classi_loss = torch.Tensor([0]).to(device=self.device)
                 if self.train_conf.loss_type == 'classification' or self.combine_loss:
                     anomaly = model_output[1]
-                    anomaly_target = data_batch.anomaly.view(self.train_conf.batch_size, len(self.target_col_num), 2)
-                    for ii in range(len(self.normedWeight)):
-                        classi_loss += self.classification_loss[ii](anomaly[:, ii, :],
-                                                                    anomaly_target[:, ii]) * (
-                                                   1 / len(self.target_col_num))
+                    anomaly_target = data_batch.anomaly.view(self.train_conf.batch_size, 5)
+                    classi_loss = self.classification_loss(anomaly, anomaly_target)
 
-                regress_loss = torch.Tensor([0]).to(device=self.device)
-                if self.train_conf.loss_type == 'regression_all':
-                    regress_loss += self.regression_loss(forecast, groud_truth)
+                if self.train_conf.loss_type == 'regression_vis':
+                    forecast = forecast[:, self.target_col_num, :]
+                    groud_truth = groud_truth[:, self.target_col_num, :]
 
-                elif self.train_conf.loss_type == 'regression_vis':
-                    for ii in range(len(self.target_col_num)):
-                        col = self.target_col_num[ii]
-                        regress_loss += self.regression_loss(forecast[:, col, :], groud_truth[:, col, :]) * (
-                                    1 / len(self.target_col_num))
+                regress_loss = self.regression_loss(forecast, groud_truth)
 
                 if self.combine_loss:
                     loss = 0.5 * classi_loss + 0.5 * regress_loss
@@ -225,7 +214,7 @@ class Runner(object):
         pickle.dump(results, open(os.path.join(self.config.exp_sub_dir, 'training_result.pickle'), 'wb'))
 
     def test(self):
-        self.config.train.batch_size = 1
+        # self.config.train.batch_size = 1
 
         if self.config.model_name == 'IC_PN_BEATS':
             self.best_model = IC_PN_BEATS(self.config)
@@ -270,43 +259,20 @@ class Runner(object):
             with torch.no_grad():
                 _backcast_output, model_output, outputs = self.best_model(data_batch.x, interpretability=True)
 
-            forecast = model_output[0].view(self.dataset_conf.nodes_num, -1)
-            groud_truth = data_batch.y.view(self.dataset_conf.nodes_num, -1)
+            forecast = model_output[0].view(self.train_conf.batch_size, self.dataset_conf.nodes_num, -1)
+            groud_truth = data_batch.y.view(self.train_conf.batch_size, self.dataset_conf.nodes_num, -1)
 
-            classi_loss = torch.Tensor([0]).to(device=self.device)
-            if self.train_conf.loss_type == 'classification' or self.combine_loss:
-                anomaly = model_output[1]
-                anomaly_target = data_batch.anomaly.view(self.train_conf.batch_size, len(self.target_col_num), 2)
-                for ii in range(len(self.normedWeight)):
-                    classi_loss += self.classification_loss[ii](anomaly[:, ii, :], anomaly_target[:, ii]) * (
-                                1 / len(self.target_col_num))
+            forecast = forecast[:, self.target_col_num, :]
+            groud_truth = groud_truth[:, self.target_col_num, :]
 
-            regress_loss = torch.Tensor([0]).to(device=self.device)
-            if self.train_conf.loss_type == 'regression_all':
-                regress_loss += self.regression_loss(forecast, groud_truth)
-            elif self.train_conf.loss_type == 'regression_vis':
-                for ii in range(len(self.target_col_num)):
-                    col = self.target_col_num[ii]
-
-                    regress_loss += self.regression_loss(forecast[col, :], groud_truth[col, :]) * (
-                                1 / len(self.target_col_num))
-
-            if self.combine_loss:
-                loss = 0.5 * classi_loss + 0.5 * regress_loss
-            else:
-                if self.train_conf.loss_type == 'classification':
-                    loss = classi_loss
-                else:
-                    loss = regress_loss
+            loss = self.regression_loss(forecast, groud_truth)
 
             test_loss += [float(loss.data.cpu().detach().numpy())]
 
             forecast_list += [forecast.cpu().detach().numpy()]
             backcast_list += [_backcast_output.cpu().detach().numpy()]
             if self.train_conf.loss_type == 'classification' or self.combine_loss:
-                anomaly_list += [anomaly.cpu().detach().numpy()]
-
-            target += [data_batch.y.cpu().detach().numpy()]
+                anomaly_list += [model_output[1].cpu().detach().numpy()]
 
             if self.config.model_name == 'IC_PN_BEATS':
                 per_trend_backcast += [outputs['per_trend_backcast']]
@@ -342,23 +308,6 @@ class Runner(object):
         if self.train_conf.loss_type == 'classification' or self.combine_loss:
             results['anomaly_pred'] = np.stack(anomaly_list, axis=0)
 
-        target = np.stack(target, axis=0)
-
-        scaled_score = get_score(target.transpose((1, 0, 2)).reshape(self.nodes_num, -1),
-                                 results['forecast'].transpose((1, 0, 2)).reshape(self.nodes_num, -1), scaler=None)
-
-        inv_scaled_score = get_score(target.transpose((1, 0, 2)).reshape(self.nodes_num, -1),
-                                     results['forecast'].transpose((1, 0, 2)).reshape(self.nodes_num, -1),
-                                     scaler=self.scaler)
-
-        score_dict = {'scaled_score': scaled_score,
-                      'inv_scaled_score': inv_scaled_score}
-
         self.logger.info(f"Avg. Test Loss = {results['test_loss']}")
-        self.logger.info(f"Avg. MAE = {scaled_score['MAE']}")
-        self.logger.info(f"Avg. MAPE = {scaled_score['MAPE']}")
-        self.logger.info(f"Avg. RMSE = {scaled_score['RMSE']}")
-        self.logger.info(f"Avg. MSE = {scaled_score['MSE']}")
 
         pickle.dump(results, open(os.path.join(self.config.exp_sub_dir, 'test_result.pickle'), 'wb'))
-        pickle.dump(score_dict, open(os.path.join(self.config.exp_sub_dir, 'test_score.pickle'), 'wb'))

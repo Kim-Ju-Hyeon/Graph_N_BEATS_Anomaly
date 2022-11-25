@@ -61,7 +61,8 @@ class N_model(nn.Module):
             self.stacks.append(self.create_stack(stack_id))
 
         if self.config.train.loss_type == 'classification' or self.config.train.combine_loss:
-            self.classification_mlp = nn.Linear(self.forecast_length, 1)
+            self.classification_mlp = nn.ModuleList([nn.Linear(self.forecast_length, 1),
+                                                     nn.Linear(11, 1)])
             self.parameters.extend(self.classification_mlp.parameters())
 
         self.parameters = nn.ParameterList(self.parameters)
@@ -192,15 +193,13 @@ class N_model(nn.Module):
             outputs['attention_matrix'] = np.stack(_attention_matrix, axis=0)
 
         if self.config.train.loss_type == 'classification' or self.config.train.combine_loss:
-            classification_input = forecast.view(self.batch_size, self.nodes_num, self.forecast_length)
-            classification_output = torch.zeros(size=(self.batch_size, len(self.target_col_num), 2)).to(device=device)
-            for ii in range(len(self.target_col_num)):
-                _input = classification_input[:, self.target_col_num[ii], :]
-                _output = self.classification_mlp(_input)
-                _output = self.softmax(_output)
-                classification_output[:, ii, :] = _output
+            _classification = forecast.view(self.batch_size, 5, 11, self.forecast_length)
+            for layer in self.classification_mlp:
+                if _classification.shape[-1] == 1:
+                    _classification = _classification.squeeze()
+                _classification = layer(_classification)
 
-            forecast = [forecast, classification_output]
+            forecast = [forecast, _classification.squeeze()]
 
             return backcast, forecast, outputs
 
