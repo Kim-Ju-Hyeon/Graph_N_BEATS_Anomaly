@@ -42,7 +42,7 @@ class Runner(object):
         self.combine_loss = config.train.combine_loss
 
         if self.train_conf.loss_type == 'classification' or self.combine_loss:
-            self.classification_loss = nn.BCEWithLogitsLoss(pos_weight=self.normedWeight)
+            self.classification_loss = nn.BCEWithLogitsLoss(pos_weight=self.normedWeight.to(device=self.device))
 
         if (self.train_conf.loss_type == 'regression_all') or (
                 self.train_conf.loss_type == 'regression_vis') or self.combine_loss:
