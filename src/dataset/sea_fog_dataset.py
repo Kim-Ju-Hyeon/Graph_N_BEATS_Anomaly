@@ -123,7 +123,7 @@ class Temporal_Graph_Signal(object):
                                num_workers=self.num_workers, pin_memory=True)
             valid = DataLoader(valid_dataset[0], batch_size=batch_size, shuffle=True, drop_last=True,
                                num_workers=self.num_workers, pin_memory=True)
-            test = DataLoader(test_dataset[0], batch_size=batch_size, shuffle=False, drop_last=False,
+            test = DataLoader(test_dataset[0], batch_size=batch_size, shuffle=False, drop_last=True,
                               num_workers=self.num_workers, pin_memory=True)
 
             return [train, label_norm], valid, test
