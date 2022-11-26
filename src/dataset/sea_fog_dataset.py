@@ -82,7 +82,7 @@ class Temporal_Graph_Signal(object):
         if weight:
             num_fog = torch.sum(anomaly_point)
             num_good = anomaly_point.shape[0] - num_fog
-            normedWeights = torch.Tensor([num_good/num_fog])
+            normedWeights = torch.Tensor([num_good / num_fog])
 
             return [_data, normedWeights]
 
@@ -91,7 +91,7 @@ class Temporal_Graph_Signal(object):
 
     def get_dataset(self, num_timesteps_in: int = 12, num_timesteps_out: int = 12, batch_size: int = 32,
                     return_loader=True):
-        if not os.path.isfile(os.path.join(self.path, f'indices_{num_timesteps_in}_{num_timesteps_out}.pickle')):
+        if not os.path.isfile(os.path.join(self.path, f'dataset_{num_timesteps_in}_{num_timesteps_out}.pickle')):
             self.dataframe.index = pd.to_datetime(self.dataframe.index)
             self.indices = [
                 (i, i + (num_timesteps_in + num_timesteps_out))
@@ -101,22 +101,30 @@ class Temporal_Graph_Signal(object):
             ]
 
             random.shuffle(self.indices)
-            pickle.dump(self.indices, open(os.path.join(self.path, f'indices.pickle'), 'wb'))
 
+            total_length_dataset = len(self.indices)
+            train_idx = int(total_length_dataset * 0.7)
+            valid_idx = int(total_length_dataset * 0.2)
+            train_indices = self.indices[:train_idx]
+            validation_indices = self.indices[train_idx:train_idx + valid_idx]
+            test_indices = self.indices[train_idx + valid_idx:]
+
+            train_dataset = self._generate_dataset(train_indices, num_timesteps_in, weight=True)
+            valid_dataset = self._generate_dataset(validation_indices, num_timesteps_in)
+            test_dataset = self._generate_dataset(test_indices, num_timesteps_in)
+
+            pickle.dump({'train': train_dataset,
+                         'valid': valid_dataset,
+                         'test': test_dataset}, open(os.path.join(self.path,
+                                                                  f'dataset_{num_timesteps_in}_{num_timesteps_out}.pickle'),
+                                                     'wb'))
         else:
-            self.indices = pickle.load(open(os.path.join(self.path, f'indices.pickle'), 'rb'))
+            dataset = pickle.load((open(os.path.join(self.path,
+                                                     f'dataset_{num_timesteps_in}_{num_timesteps_out}.pickle'), 'rb')))
 
-        total_length_dataset = len(self.indices)
-        train_idx = int(total_length_dataset * 0.7)
-        valid_idx = int(total_length_dataset * 0.2)
-        train_indices = self.indices[:train_idx]
-        validation_indices = self.indices[train_idx:train_idx + valid_idx]
-        test_indices = self.indices[train_idx + valid_idx:]
-
-        train_dataset = self._generate_dataset(train_indices, num_timesteps_in, weight=True)
-        label_norm = train_dataset[1]
-        valid_dataset = self._generate_dataset(validation_indices, num_timesteps_in)
-        test_dataset = self._generate_dataset(test_indices, num_timesteps_in)
+            train_dataset = dataset['train']
+            valid_dataset = dataset['valid']
+            test_dataset = dataset['test']
 
         if return_loader:
             train = DataLoader(train_dataset[0], batch_size=batch_size, shuffle=True, drop_last=True,
@@ -126,7 +134,7 @@ class Temporal_Graph_Signal(object):
             test = DataLoader(test_dataset[0], batch_size=1, shuffle=False, drop_last=False,
                               num_workers=self.num_workers, pin_memory=True)
 
-            return [train, label_norm], valid, test
+            return [train, train_dataset[1]], valid, test
 
         else:
             return train_dataset, valid_dataset, test_dataset
