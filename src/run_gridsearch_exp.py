@@ -53,7 +53,7 @@ def main(conf_file_path):
                     try:
                         runner = Runner(config=config)
                         runner.train()
-                        # runner.test()
+                        runner.test()
 
                     except:
                         logger.error(traceback.format_exc())
