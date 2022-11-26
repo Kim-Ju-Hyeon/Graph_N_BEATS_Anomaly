@@ -215,7 +215,7 @@ class Runner(object):
         pickle.dump(results, open(os.path.join(self.config.exp_sub_dir, 'training_result.pickle'), 'wb'))
 
     def test(self):
-        # self.config.train.batch_size = 1
+        self.config.train.batch_size = 1
 
         if self.config.model_name == 'IC_PN_BEATS':
             self.best_model = IC_PN_BEATS(self.config)
