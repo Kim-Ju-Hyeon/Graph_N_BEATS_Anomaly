@@ -91,7 +91,7 @@ class Temporal_Graph_Signal(object):
 
     def get_dataset(self, num_timesteps_in: int = 12, num_timesteps_out: int = 12, batch_size: int = 32,
                     return_loader=True):
-        if not os.path.isfile(os.path.join(self.path, f'dataset_{num_timesteps_in}_{num_timesteps_out}.pickle')):
+        if not os.path.isfile(os.path.join(self.path, f'indices_{num_timesteps_in}_{num_timesteps_out}.pickle')):
             self.dataframe.index = pd.to_datetime(self.dataframe.index)
             self.indices = [
                 (i, i + (num_timesteps_in + num_timesteps_out))
@@ -105,26 +105,27 @@ class Temporal_Graph_Signal(object):
             total_length_dataset = len(self.indices)
             train_idx = int(total_length_dataset * 0.7)
             valid_idx = int(total_length_dataset * 0.2)
+
             train_indices = self.indices[:train_idx]
             validation_indices = self.indices[train_idx:train_idx + valid_idx]
-            test_indices = self.indices[train_idx + valid_idx:]
+            test_indices = sorted(self.indices[train_idx + valid_idx:])
 
-            train_dataset = self._generate_dataset(train_indices, num_timesteps_in, weight=True)
-            valid_dataset = self._generate_dataset(validation_indices, num_timesteps_in)
-            test_dataset = self._generate_dataset(test_indices, num_timesteps_in)
-
-            pickle.dump({'train': train_dataset,
-                         'valid': valid_dataset,
-                         'test': test_dataset}, open(os.path.join(self.path,
-                                                                  f'dataset_{num_timesteps_in}_{num_timesteps_out}.pickle'),
+            pickle.dump({'train': train_indices,
+                         'valid': validation_indices,
+                         'test': test_indices}, open(os.path.join(self.path,
+                                                                  f'indices_{num_timesteps_in}_{num_timesteps_out}.pickle'),
                                                      'wb'))
         else:
-            dataset = pickle.load((open(os.path.join(self.path,
-                                                     f'dataset_{num_timesteps_in}_{num_timesteps_out}.pickle'), 'rb')))
+            _indices = pickle.load((open(os.path.join(self.path,
+                                                      f'indices_{num_timesteps_in}_{num_timesteps_out}.pickle'), 'rb')))
 
-            train_dataset = dataset['train']
-            valid_dataset = dataset['valid']
-            test_dataset = dataset['test']
+            train_indices = _indices['train']
+            validation_indices = _indices['valid']
+            test_indices = sorted(_indices['test'])
+
+        train_dataset = self._generate_dataset(train_indices, num_timesteps_in, weight=True)
+        valid_dataset = self._generate_dataset(validation_indices, num_timesteps_in)
+        test_dataset = self._generate_dataset(test_indices, num_timesteps_in)
 
         if return_loader:
             train = DataLoader(train_dataset[0], batch_size=batch_size, shuffle=True, drop_last=True,
