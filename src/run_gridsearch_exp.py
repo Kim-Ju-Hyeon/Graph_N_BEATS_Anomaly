@@ -22,7 +22,7 @@ def main(conf_file_path):
             if loss_type == 'classification' and combine_loss:
                 pass
             else:
-                for _ in range(3):
+                for _ in range(1):
                     config = edict(yaml.load(open(conf_file_path, 'r'), Loader=yaml.FullLoader))
                     config.train.loss_type = loss_type
                     config.train.combine_loss = combine_loss

@@ -1,5 +1,5 @@
 ---
-exp_name: 1126/N_HiTS # 0417
+exp_name: 1127/N_HiTS # 0417
 exp_dir: ../exp
 use_gpu: True
 device: 0
