@@ -21,6 +21,8 @@ def main(conf_file_path):
         for combine_loss in bool_list:
             if loss_type == 'classification' and combine_loss:
                 pass
+            elif loss_type == 'classification' and not combine_loss:
+                pass
             else:
                 for _ in range(1):
                     config = edict(yaml.load(open(conf_file_path, 'r'), Loader=yaml.FullLoader))

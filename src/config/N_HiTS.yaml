@@ -1,5 +1,5 @@
 ---
-exp_name: 1127/forecast_3hour/N_HiTS # 0417
+exp_name: 1127/forecast_6hour/N_HiTS # 0417
 exp_dir: ../exp
 use_gpu: True
 device: 0
@@ -52,8 +52,8 @@ forecasting_module:
     update_only_message: False
     activ: ReLU
     inter_correlation_stack_length: 1
-    forecast_length: 18
-    backcast_length: 120
+    backcast_length: 102
+    forecast_length: 36
     n_theta_hidden: [512, 512]
     thetas_dim: [32, 4] # Only Use when N_model Generic
     message_norm: False

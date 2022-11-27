@@ -1,5 +1,5 @@
 ---
-exp_name: 1127/IC_PN_BEATS_regression_vis_single_loss # 0417
+exp_name: 1127/forecast_6hour/IC_PN_BEATS # 0417
 exp_dir: ../exp
 use_gpu: True
 device: 1
@@ -52,8 +52,8 @@ forecasting_module:
     update_only_message: False
     activ: ReLU
     inter_correlation_stack_length: 1
-    forecast_length: 18
-    backcast_length: 120
+      backcast_length: 102
+      forecast_length: 36
     n_theta_hidden: [512, 512]
     thetas_dim: [32, 4] # Only Use when N_model Generic
     message_norm: False
