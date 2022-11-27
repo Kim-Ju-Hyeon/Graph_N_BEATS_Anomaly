@@ -1,5 +1,5 @@
 ---
-exp_name: 1127/forecast_3hour/IC_PN_BEATS # 0417
+exp_name: 1127/IC_PN_BEATS_regression_vis_combine_loss # 0417
 exp_dir: ../exp
 use_gpu: True
 device: 0
