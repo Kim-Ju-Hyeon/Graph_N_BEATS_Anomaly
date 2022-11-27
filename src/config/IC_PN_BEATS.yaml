@@ -2,9 +2,9 @@
 exp_name: 1127/forecast_6hour/IC_PN_BEATS # 0417
 exp_dir: ../exp
 use_gpu: True
-device: 1
+device: 0
 seed: None # If you want to reproduce set the seed
-model_name: IC_PN_BEATS # N_model IC_PN_BEATS
+model_name: N_model # N_model IC_PN_BEATS
 train_resume: False
 
 dataset:
@@ -16,7 +16,7 @@ train:
     epoch: 50
     loss_function : MSE
     combine_loss: False
-    loss_type: regression_vis # classification, regression_all, regression_vis
+    loss_type: classification # classification, regression_all, regression_vis
     lr: 1.0e-3
     wd: 0.0e-4 # Adam
     momentum: 0.9 # SGD
@@ -44,7 +44,7 @@ forecasting_module:
 
     # N_model
     shapre_weights_in_stack: True
-    stack_types: ['n_hits', 'n_hits', 'n_hits'] # trend, seasonality, generic, n_hits
+    stack_types: ['trend', 'trend', 'trend', 'seasonality', 'seasonality', 'seasonality'] # trend, seasonality, generic, n_hits
     num_blocks_per_stack: 1
 
     # Common Parameter
@@ -52,8 +52,8 @@ forecasting_module:
     update_only_message: False
     activ: ReLU
     inter_correlation_stack_length: 1
-      backcast_length: 102
-      forecast_length: 36
+    backcast_length: 102
+    forecast_length: 36
     n_theta_hidden: [512, 512]
     thetas_dim: [32, 4] # Only Use when N_model Generic
     message_norm: False
@@ -63,3 +63,4 @@ forecasting_module:
     n_pool_kernel_size: [2, 2, 2]
     n_stride_size: [2, 2, 2]
     n_freq_downsample: [168, 24, 1]
+
