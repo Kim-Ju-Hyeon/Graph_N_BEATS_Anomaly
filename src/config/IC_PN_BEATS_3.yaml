@@ -52,8 +52,8 @@ forecasting_module:
     update_only_message: False
     activ: ReLU
     inter_correlation_stack_length: 1
-    backcast_length: 102
-    forecast_length: 36
+    backcast_length: 120
+    forecast_length: 6
     n_theta_hidden: [512, 512]
     thetas_dim: [32, 4] # Only Use when N_model Generic
     message_norm: False
